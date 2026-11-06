@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AIの財布番</title>
+<meta name="description" content="AIがお金を使う前に、あなたのスマホに承認を聞きにくる。">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f7f6f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171716" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="財布番">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=BIZ+UDGothic:wght@400;700&family=Yuji+Syuku&display=swap">
+<style>
+[hidden]{display:none!important}
+img{max-width:100%}
+
+/* Layout: ホーム画面に置くアプリ。画面いっぱいの1枚。上に名前と緊急停止、AIごとの残り予算、その下にタブ。承認は朱肉の判子で押す。 */
+:root{
+  --paper:#f7f6f2; --ink:#1f1f1d; --fade:#55544f; --rule:#cfccc3; --card:#ffffff;
+  --shu:#c4372b; --shu-wash:#f6e3df; --hold:#9a6a12;
+  --f-dot:"DotGothic16","BIZ UDGothic",ui-monospace,monospace;
+  --f-body:"BIZ UDGothic","Hiragino Kaku Gothic ProN","Noto Sans JP",ui-monospace,sans-serif;
+  --f-seal:"Yuji Syuku","Hiragino Mincho ProN","Noto Serif JP",serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#171716; --ink:#ecebe6; --fade:#a9a79f; --rule:#3b3a36; --card:#201f1d;
+  --shu:#e2584a; --shu-wash:#3b2320; --hold:#dcab4c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#171716; --ink:#ecebe6; --fade:#a9a79f; --rule:#3b3a36; --card:#201f1d;
+  --shu:#e2584a; --shu-wash:#3b2320; --hold:#dcab4c; color-scheme:dark}
+*{box-sizing:border-box}
+html{height:100%;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:560px;height:calc(100% + 56px);margin:0 auto;padding-inline:12px;padding-block:12px}
+@media (min-width:420px){.wrap{padding-inline:16px}}
+.receipt{display:flex;flex-direction:column;gap:12px;height:calc(100% - 56px);min-height:520px;padding-top:6px}
+.num{font-variant-numeric:tabular-nums}
+hr{border:0;border-top:1px solid var(--rule);margin:0}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--rule);flex:none}
+.scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:12px;margin-inline:-4px;padding-inline:4px;padding-bottom:32px}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+h1{font-family:var(--f-dot);font-weight:400;font-size:24px;letter-spacing:.08em;margin:0;line-height:1.15}
+.status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fade);flex-wrap:wrap}
+.status .dot-i{width:7px;height:7px;background:var(--ink);flex:none}
+.status .dot-i.off{background:var(--hold)}
+.status button{font-size:12px;padding:0 8px;border-width:1px}
+button{font:inherit;color:var(--ink);background:transparent;border:1.5px solid var(--ink);border-radius:0;padding:8px 14px;cursor:pointer}
+button:hover{background:var(--ink);color:var(--paper)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--shu);outline-offset:2px}
+.primary{background:var(--ink);color:var(--paper)}
+.primary:hover{background:var(--paper);color:var(--ink)}
+.big{font-size:16px;padding:10px 18px;font-weight:700}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.note{font-size:13px;color:var(--fade);line-height:1.55}
+label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--fade);min-width:0}
+input{font:inherit;font-size:16px;color:var(--ink);background:transparent;border:0;border-bottom:1.5px solid var(--ink);border-radius:0;padding:4px 2px;width:100%;min-width:0}
+code,.urlbox{font-family:var(--f-body);font-size:12px;word-break:break-all;white-space:pre-wrap;border:1px solid var(--rule);background:var(--card);padding:8px;display:block;user-select:all}
+.kill{color:var(--shu);border-color:var(--shu);font-weight:700;font-size:14px;padding:7px 12px;flex:none}
+.kill:hover,.kill.on{background:var(--shu);color:var(--paper)}
+.banner{border:2px solid var(--shu);color:var(--shu);text-align:center;font-weight:700;padding:6px;font-size:14px}
+.err{border:1.5px solid var(--hold);padding:10px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.err b{color:var(--hold)}
+/* AIごとの予算(小さなカードを並べる) */
+.agents{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.agent{border:1.5px solid var(--ink);background:var(--card);padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ahead{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.agent .name{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.agent .state{font-size:12px;color:var(--fade);flex:none}
+.agent .state.off{color:var(--shu);font-weight:700}
+.agent .left{font-weight:700;font-size:24px;line-height:1.2}
+.agent .left small{font-size:12px;font-weight:400;color:var(--fade);margin-left:6px}
+.sub2{font-size:12px;color:var(--fade);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gauge{height:6px;margin-top:2px;background:var(--rule)}
+.gauge i{display:block;height:100%;background:var(--ink)}
+.gauge i.hot{background:var(--shu)}
+/* タブ */
+.panel{display:flex;flex-direction:column;gap:10px}
+.tabs{display:flex;gap:2px;border-bottom:1.5px solid var(--ink);overflow-x:auto;position:sticky;top:0;z-index:2;background:var(--paper);flex:none}
+.tabs button{border:0;padding:6px 10px;white-space:nowrap;color:var(--fade);background:transparent;font-size:15px;flex:none}
+.tabs button:hover{background:transparent;color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--paper);background:var(--ink);font-weight:700}
+.count{display:inline-block;font-weight:700;color:var(--paper);background:var(--shu);padding:0 5px;margin-left:5px;font-size:12px;line-height:1.5}
+.list,.rules{display:flex;flex-direction:column;gap:12px}
+/* 承認待ち */
+.req{display:grid;grid-template-columns:1fr auto;gap:2px 12px;position:relative}
+.req + .req{border-top:1px solid var(--rule);padding-top:12px}
+.req b{font-size:17px}
+.req .amt{font-weight:700;font-size:24px;text-align:right;line-height:1.15}
+.req .meta{grid-column:1/-1;color:var(--fade);font-size:12px}
+.req .why{grid-column:1/-1;font-size:15px;background:var(--shu-wash);padding:6px 10px;margin-top:4px}
+.req .why::before{content:"理由:";color:var(--fade);margin-right:4px;font-size:13px}
+.req .acts{grid-column:1/-1;display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:6px}
+.req .acts [data-no]{font-size:15px;padding:8px 16px}
+.approve{width:64px;height:64px;border-radius:50%;border:3px solid var(--shu);color:var(--shu);background:transparent;font-family:var(--f-seal);font-size:21px;font-weight:700;padding:0;transform:rotate(-8deg);display:grid;place-items:center;line-height:1}
+.approve:hover{background:var(--shu-wash);color:var(--shu)}
+.stamp{position:absolute;right:4px;bottom:0;width:64px;height:64px;border:3px solid var(--shu);border-radius:50%;color:var(--shu);display:grid;place-items:center;font-family:var(--f-seal);font-size:21px;transform:rotate(-8deg);opacity:.9;animation:stamp .3s ease-out;pointer-events:none}
+@keyframes stamp{from{transform:rotate(-8deg) scale(1.7);opacity:0}}
+@media (prefers-reduced-motion:reduce){.stamp{animation:none}}
+.empty{color:var(--fade);text-align:center;padding:12px 4px;font-size:14px}
+/* 履歴 */
+.log{display:flex;flex-direction:column}
+.log .item{display:grid;grid-template-columns:3.2em 1fr auto;gap:8px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--rule)}
+.log .item .m{min-width:0}
+.log .item .m div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log .item small{color:var(--fade);font-size:12px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log .item .num{text-align:right;font-weight:700}
+.mark{font-size:12px;font-weight:700;text-align:center;border:1.5px solid currentColor;padding:0 2px;line-height:1.5}
+.m-ok{color:var(--ink)}
+.m-wait{color:var(--hold)}
+.m-no{color:var(--shu);text-decoration:line-through}
+.m-stop{color:var(--fade)}
+.log .item.voided .num{text-decoration:line-through;color:var(--fade)}
+/* AIとルール・設定 */
+.rule{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
+.rule + .rule{border-top:1px solid var(--rule);padding-top:12px}
+.rule .head{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rule .full{grid-column:1/-1}
+details.more{grid-column:1/-1}
+details.more summary{cursor:pointer;color:var(--ink);font-size:14px;padding:4px 0}
+details.more .inner{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding-top:6px}
+details.more .inner .full{grid-column:1/-1}
+.danger{color:var(--shu);border-color:var(--shu)}
+.danger:hover{background:var(--shu);color:var(--paper)}
+/* つなぐ */
+.connect{border:2px solid var(--ink);background:var(--card);padding:12px;display:flex;flex-direction:column;gap:12px}
+.connect h2{margin:0;font-weight:700;font-size:18px;text-wrap:balance}
+.q{display:flex;flex-direction:column;gap:6px}
+.q b{font-size:15px;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-weight:700;font-size:15px;padding:6px 10px;border:1.5px solid var(--ink)}
+.chip:hover{background:transparent;color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.nudge{border:1.5px solid var(--ink);background:var(--card);padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px}
+.nudge .note{font-size:12px}
+.nudge button{padding:6px 12px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;font-size:14px;max-width:calc(100% - 32px)}
+.foot{text-align:center;font-size:12px;color:var(--fade);flex:none;padding-top:8px;border-top:1px solid var(--rule)}
+.busy{opacity:.55;pointer-events:none}
+#nudge:empty,#connect:empty,#agents:empty{display:none}
+@media (max-width:420px){.rule,details.more .inner{grid-template-columns:1fr}}
+
+@media (display-mode: standalone){.wrap{height:100%}.receipt{height:100%}}
+.welcome{display:flex;flex-direction:column;gap:16px;padding-block:8px}
+.welcome h2{margin:0;font-size:20px;text-wrap:balance}
+.welcome p{margin:0}
+.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.keybox{font-family:var(--f-body);font-size:13px;word-break:break-all;border:2px solid var(--ink);background:var(--card);padding:10px;user-select:all}
+img.ico{width:56px;height:56px}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <main class="receipt">
+  <header>
+    <div class="brand"><h1>AIの財布番</h1><div class="status"><span id="dot" class="dot-i off"></span><span id="stat">準備中…</span><span id="clock" class="num"></span><button id="refresh" aria-label="更新" hidden>更新</button></div></div>
+    <button id="kill" class="kill" disabled hidden>緊急停止</button>
+  </header>
+  <div class="scroll" id="scroll">
+  <section id="welcome" class="welcome" hidden></section>
+  <div id="err" class="err" hidden></div>
+  <div id="banner" class="banner" hidden>緊急停止中 — すべての支払いを止めています</div>
+  <div id="nudge"></div>
+  <div id="connect"></div>
+  <div id="agents" class="agents"></div>
+  <div class="panel" id="panel" hidden>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="queue" aria-selected="true">承認待ち<span id="qc" class="count" hidden>0</span></button>
+      <button role="tab" data-tab="rules" aria-selected="false">AIとルール</button>
+      <button role="tab" data-tab="log" aria-selected="false">履歴</button>
+      <button role="tab" data-tab="setup" aria-selected="false">設定</button>
+    </div>
+    <div id="tab-queue" class="list"><div class="empty">読み込み中…</div></div>
+    <div id="tab-log" class="log" hidden></div>
+    <div id="tab-rules" class="rules" hidden></div>
+    <div id="tab-setup" class="rules" hidden></div>
+  </div>
+  </div>
+  <div class="foot">お金はここでは動きません · 15秒ごとに更新</div>
+ </main>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+const PROJECT="zrphnuvrsldcycxtdftv";
+const FN="https://"+PROJECT+".supabase.co/functions/v1";
+const API=FN+"/saifuban-app";
+const KEY_STORE="saifuban.owner";
+let OWNER=null, D=null, newKey=null, stampId=null, busy=false, wizOpen=false, ownerReveal=null, pushState="checking", swReg=null;
+const wiz={daily:1000,auto:300};
+const DAILY_OPTS=[100,500,1000,3000,10000], AUTO_OPTS=[0,100,300,1000];
+
+const yen=n=>{n=Number(n)||0;return "¥"+(n>0&&n<10&&n%1?n.toFixed(2):Math.round(n).toLocaleString("ja-JP"))};
+const hhmm=t=>{const d=new Date(t);return d.toLocaleDateString("ja-JP",{month:"numeric",day:"numeric"})+" "+d.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const int=n=>Math.max(0,Math.min(100000000,Math.round(Number(n)||0)));
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const splitM=s=>String(s||"").split(/[,、\n]/).map(x=>x.trim()).filter(Boolean);
+const $=id=>document.getElementById(id);
+
+function readKey(){try{return localStorage.getItem(KEY_STORE)}catch(_){return null}}
+function writeKey(k){try{k?localStorage.setItem(KEY_STORE,k):localStorage.removeItem(KEY_STORE)}catch(_){}}
+
+async function api(action,args={}){
+  let r;
+  try{
+    r=await fetch(API,{method:"POST",headers:{"content-type":"application/json",...(OWNER?{"x-owner-key":OWNER}:{})},body:JSON.stringify({action,...args})});
+  }catch(e){return {error:"network"}}
+  let j; try{j=await r.json()}catch(_){j={error:"bad_response"}}
+  return j;
+}
+
+const errText=c=>({not_pending:"この申請はもう判断済みか、失効しています",agent_not_found:"このAIは見つかりません",invalid_owner_key:"合言葉が正しくありません",
+  network:"つながりませんでした。電波のよいところでもう一度試してください",bad_key:"APIキーを正しく貼り付けてください",too_many_agents:"AIは20個までつなげます",
+  server_error:"サーバーでエラーが起きました。少し待ってもう一度試してください"}[c]||"うまくいきませんでした("+c+")");
+
+function setStatus(ok,text){$("dot").className="dot-i"+(ok?"":" off");$("stat").textContent=text}
+
+async function load(quiet){
+  if(!OWNER||busy)return;
+  const d=await api("dashboard");
+  if(d.error){
+    if(d.error==="invalid_owner_key"){setStatus(false,"合言葉が無効です");showWelcome("invalid");return}
+    if(!quiet){$("err").innerHTML=`<b>読み込めません</b><div>${esc(errText(d.error))}</div><div><button id="retry" class="primary">もう一度</button></div>`;$("err").hidden=false}
+    setStatus(false,"未接続");return}
+  D=d;$("err").hidden=true;
+  setStatus(true,"接続中");$("clock").textContent=new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
+  render();
+}
+async function run(action,args,okMsg){
+  if(busy)return null; busy=true; document.body.classList.add("busy");
+  try{ const r=await api(action,args); if(r.error){toast(errText(r.error));return r} if(okMsg)toast(okMsg); return r; }
+  finally{ busy=false; document.body.classList.remove("busy"); await load(true); }
+}
+
+// ===== はじめの画面 =====
+function showWelcome(reason){
+  ["kill","refresh"].forEach(id=>$(id).hidden=true);
+  document.querySelector(".status").hidden=true;
+  ["panel","agents","nudge","connect","banner","err"].forEach(id=>{$(id).hidden=true});
+  const w=$("welcome");w.hidden=false;
+  if(ownerReveal){
+    w.innerHTML=`<h2>あなたの合言葉ができました</h2>
+      <p class="note">この合言葉が、あなたのアカウントそのものです。パスワードの代わりなので、メモアプリなどに保存してください。スマホを替えたときや、別の端末で開くときに使います。</p>
+      <div id="ok-key" class="keybox">${esc(ownerReveal)}</div>
+      <div class="row"><button data-copy="ok-key" class="primary">合言葉をコピー</button></div>
+      <p class="note">人に教えると、その人もあなたの財布番を操作できてしまいます。</p>
+      <div class="row"><button id="saved" class="primary big">保存した。はじめる</button></div>`;
+    return}
+  w.innerHTML=`<img class="ico" src="icon-192.png" alt="">
+    <h2>AIがお金を使う前に、あなたに聞きにくる</h2>
+    <p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>
+    ${reason==="invalid"?`<div class="err"><b>この端末の合言葉が使えなくなっています</b><div>もう一度入れ直すか、新しく始めてください。</div></div>`:""}
+    <div class="row"><button id="signup" class="primary big">はじめる(無料)</button></div>
+    <details class="more"><summary>別の端末ですでに使っている</summary><div class="inner">
+      <label class="full">合言葉(sbo_…)<input id="in-key" autocomplete="off" placeholder="sbo_..."></label>
+      <div class="full"><button id="restore" class="primary">この端末で使う</button></div></div></details>`;
+}
+function showApp(){
+  $("welcome").hidden=true;
+  document.querySelector(".status").hidden=false;
+  ["kill","refresh","panel","agents","nudge","connect"].forEach(id=>$(id).hidden=false);
+  render();load();
+}
+
+// ===== スマホ通知 =====
+const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const standalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+function b64ToU8(s){s=s.replace(/-/g,"+").replace(/_/g,"/");const p=s.length%4?"=".repeat(4-s.length%4):"";const b=atob(s+p);return Uint8Array.from(b,c=>c.charCodeAt(0))}
+async function checkPush(){
+  if(!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)){
+    pushState=isIOS&&!standalone()?"needs-install":"unsupported";render();return}
+  try{
+    swReg=await navigator.serviceWorker.register("sw.js");
+    const sub=await swReg.pushManager.getSubscription();
+    pushState=sub?"on":(Notification.permission==="denied"?"denied":"off");
+  }catch(_){pushState="unsupported"}
+  render();
+}
+async function enablePush(){
+  if(pushState==="needs-install"){setTab("setup");toast("先にホーム画面に追加してください");return}
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm!=="granted"){pushState=perm==="denied"?"denied":"off";render();toast("通知が許可されませんでした");return}
+    swReg=swReg||await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    const v=await fetch(API+"/vapid").then(r=>r.json());
+    const sub=await swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(v.public_key)});
+    const r=await api("push_subscribe",{subscription:sub.toJSON()});
+    if(r.error){toast(errText(r.error));return}
+    pushState="on";render();
+    const t=await api("push_test");
+    toast(t.sent?"通知をオンにしました。テスト通知を送りました":"通知をオンにしました");
+  }catch(e){toast("通知をオンにできませんでした");pushState="off";render()}
+}
+async function disablePush(){
+  try{const sub=swReg&&await swReg.pushManager.getSubscription();if(sub){await api("push_unsubscribe",{endpoint:sub.endpoint});await sub.unsubscribe()}}catch(_){}
+  pushState="off";render();toast("この端末の通知をオフにしました");
+}
+if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("message",e=>{if(e.data&&e.data.type==="refresh")load(true)});
+
+// ===== 画面 =====
+const PILL={approved_auto:["m-ok","自動"],approved:["m-ok","承認"],pending:["m-wait","待ち"],denied:["m-no","却下"],rejected:["m-no","却下"],expired:["m-stop","失効"]};
+const agentName=id=>{const a=D&&D.agents.find(x=>x.id===id);return a?a.name:"削除されたAI"};
+
+function render(){
+  if(!OWNER)return;
+  const kill=!!(D&&D.kill),k=$("kill");
+  $("banner").hidden=!kill;
+  k.disabled=!D; k.classList.toggle("on",kill); k.textContent=kill?"停止を解除":"緊急停止";
+  if(!D)return;
+  $("agents").innerHTML=D.agents.map(a=>{
+    const left=Math.max(0,a.daily-a.spent-a.reserved),p=a.daily?Math.min(100,(a.spent+a.reserved)/a.daily*100):100;
+    const off=kill||!a.active;
+    return `<div class="agent"><div class="ahead"><span class="name">${esc(a.name)}</span><span class="state${off?" off":""}">${off?"停止中":"稼働中"}</span></div>
+      <div class="left num">${yen(left)}<small>あと使える</small></div>
+      <div class="gauge" aria-hidden="true"><i class="${p>80?"hot":""}" style="width:${p}%"></i></div>
+      <div class="sub2 num">使った ${yen(a.spent)} / ${yen(a.daily)}</div></div>`}).join("");
+  const q=D.requests.filter(r=>r.status==="pending"),stamped=D.requests.find(r=>r.id===stampId);
+  const qc=$("qc");qc.textContent=q.length;qc.hidden=!q.length;
+  const cards=(stamped&&stamped.status!=="pending"?[stamped]:[]).concat(q);
+  $("tab-queue").innerHTML=cards.length?cards.map(r=>`<div class="req">
+    <div><b>${esc(r.merchant)}</b><div class="meta">${esc(agentName(r.agent_id))} · ${hhmm(r.created_at)} · ${esc(r.note)}</div></div>
+    <div class="amt num">${yen(r.amount)}</div>
+    <div class="why">${esc(r.reason||"(理由なし)")}</div>
+    ${r.status==="pending"?`<div class="acts"><button data-no="${r.id}">却下する</button><button class="approve" data-ok="${r.id}" aria-label="承認する">承認</button></div>`:`<div class="stamp">承認</div>`}
+  </div>`).join(""):`<div class="empty">${D.agents.length?"いま判断が必要なものはありません。":"まだAIがつながっていません。<br>上の「AIをつなぐ」から始めてください。"}</div>`;
+  $("tab-log").innerHTML=D.requests.length?D.requests.map(r=>{const[c,l]=PILL[r.status]||["m-stop",r.status];const v=["denied","rejected","expired"].includes(r.status);return `<div class="item${v?" voided":""}">
+    <span class="mark ${c}">${l}</span>
+    <div class="m"><div>${esc(r.merchant)}</div><small>${hhmm(r.created_at)} · ${esc(agentName(r.agent_id))}</small><small>${esc(r.note)}${r.reason?" · "+esc(r.reason):""}</small></div>
+    <span class="num">${yen(r.amount)}</span></div>`}).join(""):`<div class="empty">まだ記録はありません</div>`;
+  if(!$("tab-rules").contains(document.activeElement))renderRules();
+  if(!$("tab-setup").contains(document.activeElement))renderSetup();
+  renderTop();
+}
+
+function renderTop(){
+  const nudge=$("nudge"),con=$("connect");
+  if(!D){nudge.innerHTML="";con.innerHTML="";return}
+  nudge.innerHTML=pushState==="off"?`<div class="nudge"><div><b>スマホに通知を受け取る</b><div class="note">承認待ちを通知から承認できます</div></div><button id="push-on" class="primary">オンにする</button></div>`
+    :pushState==="needs-install"?`<div class="nudge"><div><b>通知を受け取るには</b><div class="note">共有ボタン →「ホーム画面に追加」から開いてください</div></div><button data-tab="setup">やり方</button></div>`:"";
+  if(newKey){
+    con.innerHTML=`<div class="connect"><h2>「${esc(newKey.name)}」をつなぐURLができました</h2>
+      <div class="note">このURLを、使っているAIの「コネクタ」や「MCPサーバー」の設定に貼ってください。それで完了です。</div>
+      <code id="nu" class="urlbox">${FN}/saifuban-mcp/${esc(newKey.key)}</code>
+      <div class="row"><button data-copy="nu" class="primary big">URLをコピー</button><button data-hidekey="1">閉じる</button></div>
+      <div class="note">このURLはこの画面を閉じると二度と表示されません。人に見せないでください(なくしたら「AIとルール」で作り直せます)。</div>
+      <details class="more"><summary>パソコンでAPIキーごと見張りたい人向け</summary>
+        <div class="note" style="padding-top:6px">エージェントキー(「設定」でAPIキーを預けたときに使います):</div><code id="nk" class="urlbox">${esc(newKey.key)}</code>
+        <div class="row" style="padding-top:6px"><button data-copy="nk">キーをコピー</button></div></details></div>`;
+    return}
+  if(!D.agents.length||wizOpen){
+    const chip=(k,v,label)=>`<button class="chip" data-chip="${k}:${v}" aria-pressed="${wiz[k]===v}">${label}</button>`;
+    con.innerHTML=`<div class="connect"><h2>${D.agents.length?"別のAIをつなぐ":"AIをつなぐ"}</h2>
+      <div class="q"><b>1日いくらまで使っていい?</b><div class="chips">${DAILY_OPTS.map(v=>chip("daily",v,yen(v))).join("")}</div></div>
+      <div class="q"><b>いくら以下なら、あなたに聞かずに払っていい?</b><div class="chips">${AUTO_OPTS.map(v=>chip("auto",v,v?yen(v)+"まで":"毎回聞く")).join("")}</div>
+        <div class="note">それより高い支払いは、あなたのスマホに承認を聞きにきます。</div></div>
+      <label class="q"><b>名前(なくてもOK)</b><input id="n-name" placeholder="例: 自宅のClaude"></label>
+      <div class="row"><button id="add" class="primary big">つなぐ</button>${D.agents.length?'<button id="wiz-close">やめる</button>':""}</div></div>`;
+    return}
+  con.innerHTML="";
+}
+
+const PROV={
+  openrouter:{label:"OpenRouter",ph:"sk-or-v1-...",base:"/saifuban-proxy/openrouter/v1",hint:"1つのキーでClaude・GPT・Gemini・Llamaなど何百種類ものモデルを使えるサービス。迷ったらこれ1つで足ります。実際にかかった金額がそのまま記録されます。"},
+  anthropic:{label:"Anthropic API",ph:"sk-ant-...",base:"/saifuban-proxy/anthropic",hint:"Claude Code に使うときは ANTHROPIC_BASE_URL にこの住所、ANTHROPIC_API_KEY にエージェントキーを設定します。"},
+  openai:{label:"OpenAI API",ph:"sk-...",base:"/saifuban-proxy/openai/v1",hint:"OpenAIのSDKやツールでは OPENAI_BASE_URL にこの住所、OPENAI_API_KEY にエージェントキーを設定します。"},
+  google:{label:"Google Gemini API",ph:"AIza...",base:"/saifuban-proxy/google/v1beta/openai",hint:"OpenAI互換の住所です。Google純正のSDKを使う場合は末尾の /v1beta/openai を外してください。"}};
+
+function renderSetup(){
+  if(!D)return;
+  const pushCard={
+    on:`<div class="full note">この端末に、承認待ちの通知が届きます。通知の「承認する」「却下」ボタンでそのまま判断できます(iPhoneでは通知を押すとこの画面が開きます)。</div>
+        <div class="full row"><button id="push-test">テスト通知を送る</button><button id="push-off" class="danger">この端末の通知をオフ</button></div>`,
+    off:`<div class="full note">オンにすると、承認待ちが出たときにこの端末へ通知が届きます。</div><div class="full"><button id="push-on" class="primary">通知をオンにする</button></div>`,
+    denied:`<div class="full note">この端末では通知がブロックされています。端末の設定でこのアプリの通知を許可してから、もう一度開いてください。</div>`,
+    "needs-install":`<ol class="full note steps"><li>Safariの下にある共有ボタン(四角から矢印)を押す</li><li>「ホーム画面に追加」を選ぶ</li><li>ホーム画面にできた「財布番」から開いて、ここで通知をオンにする</li></ol>
+        <div class="full note">iPhoneでは、ホーム画面に追加したアプリからだけ通知を受け取れます(iOS 16.4以降)。</div>`,
+    unsupported:`<div class="full note">このブラウザは通知に対応していません。iPhoneはSafari、AndroidはChromeで開いてください。</div>`,
+    checking:`<div class="full note">確認中…</div>`}[pushState];
+  const keys=Object.entries(PROV).map(([p,v])=>{const h=D.providers&&D.providers[p];return `<div class="rule"><div class="head"><b>${v.label}</b><span class="note">${h?`預かり中 ${esc(h)}`:"未設定"}</span></div>
+      <div class="full note">${v.hint}</div>
+      <label class="full">${h?"新しいキーに差し替える":"本物のAPIキーを預ける"}<input id="pk-${p}" type="password" autocomplete="off" placeholder="${v.ph}"></label>
+      <div class="full row"><button data-pkey="${p}" class="primary">保存</button>${h?`<button data-pkeyoff="${p}" class="danger">預けるのをやめる</button>`:""}</div>
+      <div class="full note">AIに設定する住所(ベースURL):</div>
+      <code id="base-${p}" class="full">${FN}${v.base}</code>
+      <div class="full row"><button data-copy="base-${p}">住所をコピー</button></div></div>`}).join("");
+  $("tab-setup").innerHTML=`<div class="rule"><div class="head"><b>スマホ通知</b><span class="note">${{on:"オン",off:"オフ",denied:"ブロック中","needs-install":"ホーム画面に追加が必要",unsupported:"非対応",checking:""}[pushState]}</span></div>${pushCard}</div>
+    <div class="rule"><div class="head"><b>合言葉(アカウント)</b></div>
+      <div class="full note">別の端末で開くときや、スマホを替えたときに使います。人に見せないでください。</div>
+      <code id="ok-key2" class="full">${esc(OWNER)}</code>
+      <div class="full row"><button data-copy="ok-key2">合言葉をコピー</button><button id="logout" class="danger">この端末から外す</button></div></div>
+    <details class="more"><summary>APIキーを預けて、使いすぎを確実に止める(パソコンで使う人向け)</summary><div style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+    <div class="rule"><div class="head"><b>しくみ</b></div>
+      <div class="full note">本物のAPIキーは財布番が暗号化して保管し、AIにはエージェントキー(sbk_…)だけを渡します。AIの通信は財布番を通るので、今日の予算を使い切った時点で止まり、実際の利用料が履歴に記録されます。</div>
+      <div class="full note">AIにはAPIキーの代わりに、つなぐURLの最後にある sbk_… の部分(エージェントキー)を設定します。</div>
+      <div class="full note">利用料はOpenRouterでは実費、それ以外はトークン数×料金表の目安(1ドル=${esc(D.usd_jpy)}円)で計算します。予算を超えるのは最大で最後の1回分です。</div></div>`+keys+`</div></details>`;
+}
+
+function renderRules(){
+  if(!D)return;
+  $("tab-rules").innerHTML=D.agents.map(a=>`<div class="rule" data-id="${a.id}">
+    <div class="head"><b>${esc(a.name)}</b><span class="note">${a.active?"稼働中":"停止中"}</span></div>
+    <label>1日いくらまで(円)<input id="r-${a.id}-daily" data-f="daily" type="number" inputmode="numeric" min="0" value="${a.daily}"></label>
+    <label>聞かずに払っていい額(円)<input id="r-${a.id}-auto" data-f="auto" type="number" inputmode="numeric" min="0" value="${a.auto}"></label>
+    <div class="full row"><button data-save="${a.id}" class="primary">保存</button></div>
+    <details class="more"><summary>もっと細かく</summary><div class="inner">
+      <label>1回の上限(円)<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="numeric" min="0" value="${a.per_tx}"></label>
+      <label>使ってよい支払先(空欄ならどこでもOK)<input id="r-${a.id}-merchants" data-f="merchants" value="${esc(a.merchants.join(", "))}" placeholder="例: OpenRouter, AWS"></label>
+      <div class="full row"><button data-toggle="${a.id}">${a.active?"このAIを止める":"再開する"}</button><button data-rotate="${a.id}">つなぐURLを作り直す</button><button data-del="${a.id}" class="danger">このAIを削除</button><span id="cf-${a.id}" class="note" hidden>もう一度押すと削除します</span></div>
+      <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 聞かずに払っていい額。予算は日本時間0時にリセット、24時間放置の申請は失効します。</div>
+    </div></details>
+  </div>`).join("")+`<div><button id="wiz-open" class="primary">+ 別のAIをつなぐ</button></div>`;
+}
+
+function setTab(t){document.querySelectorAll("[data-tab]").forEach(b=>{const on=b.dataset.tab===t;b.setAttribute("aria-selected",on);const el=$("tab-"+b.dataset.tab);if(el)el.hidden=!on});if(t==="rules")renderRules();if(t==="setup")renderSetup()}
+let tt;function toast(m){const e=$("toast");e.textContent=m;e.hidden=false;clearTimeout(tt);tt=setTimeout(()=>e.hidden=true,2600)}
+const val=id=>$(id).value;
+let delArm=null;
+
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.tab)return setTab(b.dataset.tab);
+  if(b.dataset.copy){const t=$(b.dataset.copy).textContent;
+    try{await navigator.clipboard.writeText(t);toast("コピーしました")}catch(_){const r=document.createRange();r.selectNodeContents($(b.dataset.copy));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("選択しました。長押しでコピーしてください")}return}
+  if(b.id==="signup"){b.disabled=true;OWNER=null;const r=await api("signup");b.disabled=false;
+    if(r.owner_key){OWNER=r.owner_key;writeKey(OWNER);ownerReveal=r.owner_key;showWelcome()}else toast(errText(r.error||"server_error"));return}
+  if(b.id==="saved"){ownerReveal=null;return showApp()}
+  if(b.id==="restore"){const k=val("in-key").trim();if(!/^sbo_[0-9a-f]{48}$/.test(k)){toast("合言葉の形が違います(sbo_ で始まる52文字)");return}
+    OWNER=k;const d=await api("dashboard");if(d.error){OWNER=null;toast(errText(d.error));return}
+    writeKey(k);showApp();toast("この端末で使えるようになりました");return}
+  if(!OWNER)return;
+  if(b.id==="refresh"||b.id==="retry"){$("err").hidden=true;return load()}
+  if(b.id==="logout"){if(delArm!=="logout"){delArm="logout";b.textContent="合言葉を保存したら、もう一度押す";return}
+    delArm=null;await disablePush();writeKey(null);OWNER=null;D=null;showWelcome();return}
+  if(b.dataset.ok){const id=int(b.dataset.ok);const r=await run("decide",{id,approve:true},"承認しました。AIに支払いOKが伝わります");if(r&&r.ok){stampId=id;render();setTimeout(()=>{stampId=null;render()},1200)}return}
+  if(b.dataset.no)return run("decide",{id:int(b.dataset.no),approve:false},"却下しました");
+  if(b.id==="kill"&&D)return run("set_kill",{kill:!D.kill},D.kill?"停止を解除しました":"全AIを停止しました");
+  if(b.dataset.toggle||b.dataset.save){
+    const id=b.dataset.toggle||b.dataset.save;if(!UUID.test(id))return;const a=D.agents.find(x=>x.id===id);if(!a)return;
+    const card=b.closest(".rule"),g=f=>card.querySelector(`[data-f="${f}"]`).value;
+    const active=b.dataset.toggle?!a.active:a.active;
+    return run("update_agent",{id,name:a.name,per_tx:int(g("per_tx")),daily:int(g("daily")),auto:int(g("auto")),merchants:splitM(g("merchants")),active},
+      b.dataset.toggle?(active?`${a.name}を再開しました`:`${a.name}を止めました`):`${a.name}のルールを保存しました`);
+  }
+  if(b.dataset.del){const id=b.dataset.del;if(!UUID.test(id))return;
+    if(delArm!==id){delArm=id;$("cf-"+id).hidden=false;return}
+    delArm=null;return run("delete_agent",{id},"削除しました");}
+  if(b.dataset.chip){const[k,v]=b.dataset.chip.split(":");if(k in wiz){wiz[k]=int(v);renderTop()}return}
+  if(b.id==="wiz-open"){wizOpen=true;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"});return}
+  if(b.id==="wiz-close"){wizOpen=false;return renderTop()}
+  if(b.id==="add"){
+    const name=(val("n-name").trim()||("AI "+(D.agents.length+1))).slice(0,60);
+    const r=await run("create_agent",{name,per_tx:wiz.daily,daily:wiz.daily,auto:Math.min(wiz.auto,wiz.daily),merchants:[]},"つなぐURLができました");
+    if(r&&r.agent_key){newKey={name,key:r.agent_key};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
+  if(b.dataset.hidekey){newKey=null;return renderTop()}
+  if(b.dataset.rotate){const id=b.dataset.rotate;if(!UUID.test(id))return;const a=D.agents.find(x=>x.id===id);if(!a)return;
+    if(delArm!=="rot-"+id){delArm="rot-"+id;b.textContent="もう一度押すと今のURLは使えなくなります";return}
+    delArm=null;const r=await run("rotate_key",{id},"新しい接続URLを発行しました");
+    if(r&&r.agent_key){newKey={name:a.name,key:r.agent_key};renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
+  if(b.id==="push-on")return enablePush();
+  if(b.id==="push-off")return disablePush();
+  if(b.id==="push-test"){const t=await api("push_test");toast(t.sent?"テスト通知を送りました":"送れませんでした。通知をオンにし直してください");return}
+  if(b.dataset.pkey){const p=b.dataset.pkey;if(!PROV[p])return;const inp=$("pk-"+p),k=inp.value.trim();
+    if(k.length<20||/\s/.test(k)){toast("APIキーを正しく貼り付けてください");return}
+    const r=await run("set_provider_key",{provider:p,key:k},`${PROV[p].label}のキーを預かりました`);
+    if(r&&r.ok)inp.value="";return}
+  if(b.dataset.pkeyoff){const p=b.dataset.pkeyoff;if(!PROV[p])return;
+    if(delArm!=="pk-"+p){delArm="pk-"+p;b.textContent="もう一度押すとやめます";return}
+    delArm=null;return run("set_provider_key",{provider:p,key:""},`${PROV[p].label}のキーを外しました`)}
+});
+
+OWNER=readKey();
+if(OWNER){showApp()}else{setStatus(false,"");showWelcome()}
+checkPush();
+setInterval(()=>{if(OWNER&&document.visibilityState==="visible")load(true)},15000);
+document.addEventListener("visibilitychange",()=>{if(OWNER&&document.visibilityState==="visible")load(true)});
+</script>
+</body>
+</html>
