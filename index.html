@@ -163,6 +163,8 @@ img.ico{width:56px;height:56px}
 .gnum{width:28px;height:28px;border:1.5px solid var(--ink);display:grid;place-items:center;font-weight:700;font-size:14px}
 .gstep.done .gnum{background:var(--ink);color:var(--paper)}
 .gstep.done b{color:var(--fade)}
+.howto{align-self:flex-start;border:0;padding:2px 0;margin-top:2px;font-size:13px;text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
+.howto:hover{background:transparent;color:var(--shu)}
 a.btn{display:inline-block;text-decoration:none;border:1.5px solid var(--ink);padding:8px 14px;font-weight:700}
 a.btn.primary{background:var(--ink);color:var(--paper)}
 </style>
@@ -204,7 +206,7 @@ const PROJECT="zrphnuvrsldcycxtdftv";
 const FN="https://"+PROJECT+".supabase.co/functions/v1";
 const API=FN+"/saifuban-app";
 const KEY_STORE="saifuban.owner";
-let guideAI="claude", guideDone={};
+let guideAI="claude", guideDone={}, guideFor=null;
 let OWNER=null, D=null, newKey=null, stampId=null, busy=false, wizOpen=false, ownerReveal=null, pushState="checking", swReg=null;
 const wiz={daily:1000,auto:300};
 const DAILY_OPTS=[100,500,1000,3000,10000], AUTO_OPTS=[0,100,300,1000];
@@ -334,7 +336,8 @@ function render(){
     return `<div class="agent"><div class="ahead"><span class="name">${esc(a.name)}</span><span class="state${off?" off":""}">${off?"停止中":"稼働中"}</span></div>
       <div class="left num">${yen(left)}<small>あと使える</small></div>
       <div class="gauge" aria-hidden="true"><i class="${p>80?"hot":""}" style="width:${p}%"></i></div>
-      <div class="sub2 num">使った ${yen(a.spent)} / ${yen(a.daily)}</div></div>`}).join("");
+      <div class="sub2 num">使った ${yen(a.spent)} / ${yen(a.daily)}</div>
+      <button class="howto" data-howto="${a.id}">つなぎ方</button></div>`}).join("");
   const q=D.requests.filter(r=>r.status==="pending"),stamped=D.requests.find(r=>r.id===stampId);
   const qc=$("qc");qc.textContent=q.length;qc.hidden=!q.length;
   const cards=(stamped&&stamped.status!=="pending"?[stamped]:[]).concat(q);
@@ -358,13 +361,18 @@ function renderTop(){
   if(!D){nudge.innerHTML="";con.innerHTML="";return}
   nudge.innerHTML=pushState==="off"?`<div class="nudge"><div><b>スマホに通知を受け取る</b><div class="note">承認待ちを通知から承認できます</div></div><button id="push-on" class="primary">オンにする</button></div>`
     :pushState==="needs-install"?`<div class="nudge"><div><b>通知を受け取るには</b><div class="note">共有ボタン →「ホーム画面に追加」から開いてください</div></div><button data-tab="setup">やり方</button></div>`:"";
-  if(newKey){
+  const ga=!newKey&&guideFor?D.agents.find(x=>x.id===guideFor):null;
+  if(newKey||ga){
     const isClaude=guideAI==="claude";
+    const name=newKey?newKey.name:ga.name;
     const step=(n,title,body)=>`<li class="gstep${guideDone[n]?" done":""}"><span class="gnum">${guideDone[n]?"✓":n}</span><div><b>${title}</b>${body}</div></li>`;
-    con.innerHTML=`<div class="connect"><h2>「${esc(newKey.name)}」をAIにつなぐ</h2>
+    const step1=newKey
+      ?step(1,"URLをコピーする",`<code id="nu" class="urlbox">${FN}/saifuban-mcp/${esc(newKey.key)}</code><div class="row"><button data-copy="nu" data-step="1" class="primary">URLをコピー</button></div>`)
+      :step(1,"つなぐURLを用意する",`<div class="note">前にコピーしたURLがあれば、それをそのまま使えます。手元にないときは、作り直してください(前のURLは使えなくなります)。</div><div class="row"><button data-rotate="${ga.id}" class="primary">URLを作り直す</button></div>`);
+    con.innerHTML=`<div class="connect"><h2>「${esc(name)}」をAIにつなぐ</h2>
       <div class="seg" role="tablist" aria-label="使っているAI"><button class="segb" data-guide="claude" aria-selected="${isClaude}">Claude</button><button class="segb" data-guide="other" aria-selected="${!isClaude}">ほかのAI</button></div>
       <ol class="guide">
-        ${step(1,"URLをコピーする",`<code id="nu" class="urlbox">${FN}/saifuban-mcp/${esc(newKey.key)}</code><div class="row"><button data-copy="nu" data-step="1" class="primary">URLをコピー</button></div>`)}
+        ${step1}
         ${isClaude
           ?step(2,"Claudeのコネクタ画面を開く",`<div class="row"><a class="btn primary" href="https://claude.ai/settings/connectors" target="_blank" rel="noopener" data-step="2">コネクタ画面を開く</a></div><div class="note">スマホのClaudeアプリではコネクタを追加できません。アプリが開いてしまうときは、SafariやChromeで claude.ai を開いてください。</div>`)
           :step(2,"AIの設定でコネクタを探す",`<div class="note">「コネクタ」「MCPサーバー」「ツール」「連携」などの名前の設定にあります。リモートMCP(URLでつなぐ形)に対応したAIで使えます。</div>`)}
@@ -373,11 +381,11 @@ function renderTop(){
           :step(3,"URLを貼って保存する",`<div class="note">名前は「財布番」にしておくと分かりやすいです。</div>`)}
         ${step(4,"つながったか試す",`<div class="note">AIに「財布番で今日の残り予算を見て」と頼んでください。残りの金額が返ってくれば成功です。</div>`)}
       </ol>
-      <div class="note">このURLはこの画面を閉じると二度と表示されません。人に見せないでください(なくしたら「AIとルール」で作り直せます)。</div>
+      ${newKey?`<div class="note">このURLはこの画面を閉じると二度と表示されません。人に見せないでください(なくしたら作り直せます)。</div>`:""}
       <div class="row"><button data-hidekey="1">閉じる</button></div>
-      <details class="more"><summary>パソコンでAPIキーごと見張りたい人向け</summary>
+      ${newKey?`<details class="more"><summary>パソコンでAPIキーごと見張りたい人向け</summary>
         <div class="note" style="padding-top:6px">エージェントキー(「設定」でAPIキーを預けたときに使います):</div><code id="nk" class="urlbox">${esc(newKey.key)}</code>
-        <div class="row" style="padding-top:6px"><button data-copy="nk">キーをコピー</button></div></details></div>`;
+        <div class="row" style="padding-top:6px"><button data-copy="nk">キーをコピー</button></div></details>`:""}</div>`;
     return}
   if(!D.agents.length||wizOpen){
     const chip=(k,v,label)=>`<button class="chip" data-chip="${k}:${v}" aria-pressed="${wiz[k]===v}">${label}</button>`;
@@ -433,7 +441,7 @@ function renderRules(){
     <div class="head"><b>${esc(a.name)}</b><span class="note">${a.active?"稼働中":"停止中"}</span></div>
     <label>1日いくらまで(円)<input id="r-${a.id}-daily" data-f="daily" type="number" inputmode="numeric" min="0" value="${a.daily}"></label>
     <label>聞かずに払っていい額(円)<input id="r-${a.id}-auto" data-f="auto" type="number" inputmode="numeric" min="0" value="${a.auto}"></label>
-    <div class="full row"><button data-save="${a.id}" class="primary">保存</button></div>
+    <div class="full row"><button data-save="${a.id}" class="primary">保存</button><button data-howto="${a.id}">つなぎ方を見る</button></div>
     <details class="more"><summary>もっと細かく</summary><div class="inner">
       <label>1回の上限(円)<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="numeric" min="0" value="${a.per_tx}"></label>
       <label>使ってよい支払先(空欄ならどこでもOK)<input id="r-${a.id}-merchants" data-f="merchants" value="${esc(a.merchants.join(", "))}" placeholder="例: OpenRouter, AWS"></label>
@@ -484,12 +492,13 @@ document.addEventListener("click",async e=>{
   if(b.id==="add"){
     const name=(val("n-name").trim()||("AI "+(D.agents.length+1))).slice(0,60);
     const r=await run("create_agent",{name,per_tx:wiz.daily,daily:wiz.daily,auto:Math.min(wiz.auto,wiz.daily),merchants:[]},"つなぐURLができました");
-    if(r&&r.agent_key){guideDone={};newKey={name,key:r.agent_key};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
-  if(b.dataset.hidekey){newKey=null;return renderTop()}
+    if(r&&r.agent_key){guideDone={};guideFor=null;newKey={name,key:r.agent_key};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
+  if(b.dataset.hidekey){newKey=null;guideFor=null;return renderTop()}
+  if(b.dataset.howto){if(!UUID.test(b.dataset.howto))return;newKey=null;guideFor=b.dataset.howto;guideDone={};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"});return}
   if(b.dataset.rotate){const id=b.dataset.rotate;if(!UUID.test(id))return;const a=D.agents.find(x=>x.id===id);if(!a)return;
     if(delArm!=="rot-"+id){delArm="rot-"+id;b.textContent="もう一度押すと今のURLは使えなくなります";return}
     delArm=null;const r=await run("rotate_key",{id},"新しい接続URLを発行しました");
-    if(r&&r.agent_key){guideDone={};newKey={name:a.name,key:r.agent_key};renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
+    if(r&&r.agent_key){guideDone={};guideFor=null;newKey={name:a.name,key:r.agent_key};renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
   if(b.id==="push-on")return enablePush();
   if(b.id==="push-off")return disablePush();
   if(b.id==="push-test"){const t=await api("push_test");toast(t.sent?"テスト通知を送りました":"送れませんでした。通知をオンにし直してください");return}
