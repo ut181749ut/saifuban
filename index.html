@@ -142,7 +142,7 @@ details.more .inner .full{grid-column:1/-1}
 .nudge .note{font-size:12px}
 .nudge button{padding:6px 12px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;font-size:14px;max-width:calc(100% - 32px)}
-.foot{text-align:center;font-size:12px;color:var(--fade);flex:none;padding-top:8px;border-top:1px solid var(--rule)}
+.foot a,.note a{color:inherit}.foot{text-align:center;font-size:12px;color:var(--fade);flex:none;padding-top:8px;border-top:1px solid var(--rule)}
 .busy{opacity:.55;pointer-events:none}
 #nudge:empty,#connect:empty,#agents:empty{display:none}
 @media (max-width:420px){.rule,details.more .inner{grid-template-columns:1fr}}
@@ -196,7 +196,7 @@ a.btn.primary{background:var(--ink);color:var(--paper)}
     <div id="tab-setup" class="rules" hidden></div>
   </div>
   </div>
-  <div class="foot">お金はここでは動きません · 15秒ごとに更新</div>
+  <div class="foot">お金はここでは動きません · 15秒ごとに更新 · <a href="terms.html">規約</a> · <a href="privacy.html">プライバシー</a></div>
  </main>
 </div>
 <div id="toast" class="toast" hidden></div>
@@ -288,7 +288,7 @@ function showWelcome(reason){
     <h2>AIがお金を使う前に、あなたに聞きにくる</h2>
     <p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>
     ${reason==="invalid"?`<div class="err"><b>この端末の合言葉が使えなくなっています</b><div>もう一度入れ直すか、新しく始めてください。</div></div>`:""}
-    <div class="row"><button id="signup" class="primary big">はじめる(無料)</button></div>
+    <div class="row"><button id="signup" class="primary big">はじめる(無料)</button></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div>
     <details class="more"><summary>別の端末ですでに使っている</summary><div class="inner">
       <label class="full">合言葉(sbo_…)<input id="in-key" autocomplete="off" placeholder="sbo_..."></label>
       <div class="full"><button id="restore" class="primary">この端末で使う</button></div></div></details>`;

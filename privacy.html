@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>プライバシーポリシー | AIの財布番</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--paper:#f7f6f2;--ink:#1f1f1d;--fade:#55544f;--rule:#cfccc3;color-scheme:light}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#171716;--ink:#ecebe6;--fade:#a9a79f;--rule:#3b3a36;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#171716;--ink:#ecebe6;--fade:#a9a79f;--rule:#3b3a36;color-scheme:dark}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"BIZ UDGothic","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;line-height:1.85;font-size:16px}
+main{max-width:680px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 6px;padding-top:14px;border-top:1px solid var(--rule)}
+p,li{margin:6px 0}ul,ol{padding-left:1.4em}.fade{color:var(--fade);font-size:14px}a{color:inherit}
+</style>
+</head>
+<body><main>
+<p class="fade"><a href="./">← AIの財布番にもどる</a></p>
+<h1>プライバシーポリシー</h1>
+<p class="fade">制定日: 2026年11月7日</p>
+<p>「AIの財布番」(以下「本サービス」)が、どんな情報を預かり、どう使うかを説明します。</p>
+
+<h2>1. 預かる情報</h2>
+<ul>
+<li><b>合言葉</b>: そのまま保存せず、元に戻せない形(ハッシュ値)と、確認用の先頭の数文字だけを保存します。合言葉そのものは、利用者の端末のブラウザ内にだけ保存されます。</li>
+<li><b>AIとルール</b>: AIにつけた名前、予算、自動で許可する金額、許可するお店の一覧。</li>
+<li><b>AIをつなぐURLの鍵</b>: 元に戻せない形(ハッシュ値)で保存します。</li>
+<li><b>支払いの申請</b>: AIが送ってきたお店の名前、金額、理由、判断の結果、日時。</li>
+<li><b>通知の宛先</b>: スマホ通知を受け取るためにブラウザが発行する宛先情報。ntfyを使う場合はそのトピック名。</li>
+<li><b>預けたAPIキー</b>(この機能を使う場合のみ): 暗号化した保管庫に保存し、画面には末尾の数文字だけを表示します。</li>
+<li><b>AIの利用量</b>(APIキーを預けた場合のみ): AIの提供元が返す使用量と、そこから計算した金額。会話や指示の中身は保存しません。</li>
+</ul>
+<p>氏名、メールアドレス、住所、電話番号、カード番号、口座番号は受け取りません。</p>
+
+<h2>2. 使う目的</h2>
+<ul>
+<li>AIの申請を判断し、承認待ちを利用者に知らせるため</li>
+<li>利用者の画面に、予算の残りや履歴を表示するため</li>
+<li>不正な利用を防ぎ、本サービスを安全に動かすため</li>
+</ul>
+<p>広告のために使ったり、第三者に売ったりすることはありません。</p>
+
+<h2>3. 外部のサービス</h2>
+<p>本サービスは、次のサービスを使って動いています。必要な範囲で情報がこれらのサービスを通ります。</p>
+<ul>
+<li>Supabase(データの保存と処理。保存場所は東京リージョン)</li>
+<li>GitHub Pages(このサイトの配信)</li>
+<li>スマホ通知の配信元(Apple、Google、Mozillaなど、利用者のブラウザによって決まります)</li>
+<li>ntfy.sh(ntfyでの通知を設定した場合のみ)</li>
+<li>Anthropic、OpenAI、Google、OpenRouter(APIキーを預けた場合に、AIへのリクエストを中継する先)</li>
+<li>Google Fonts(画面の文字の表示)</li>
+</ul>
+
+<h2>4. 保存する期間</h2>
+<p>アカウントを使っている間は保存します。削除したAIは表示されなくなりますが、記録は残ることがあります。データの削除を希望する場合は、下のお問い合わせ先からご連絡ください。</p>
+
+<h2>5. 安全管理</h2>
+<p>通信は暗号化しています。鍵や合言葉は元に戻せない形で保存し、APIキーは暗号化して保管します。データベースには、本サービスのサーバー以外から直接アクセスできないようにしています。</p>
+
+<h2>6. このポリシーの変更</h2>
+<p>このポリシーは変更することがあります。変更後の内容はこのページに載せた時点で効力を持ちます。</p>
+
+<p class="fade" style="margin-top:36px">お問い合わせ: <a href="https://github.com/ut181749ut/saifuban/issues">GitHubのIssues</a><br>関連: <a href="terms.html">利用規約</a></p>
+</main></body></html>
