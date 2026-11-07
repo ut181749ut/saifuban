@@ -154,7 +154,7 @@ details.more .inner .full{grid-column:1/-1}
 .steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
 .keybox{font-family:var(--f-body);font-size:13px;word-break:break-all;border:2px solid var(--ink);background:var(--card);padding:10px;user-select:all}
 img.ico{width:56px;height:56px}
-.seg{display:flex;border:1.5px solid var(--ink);align-self:flex-start}
+.seg{display:flex;flex-wrap:wrap;border:1.5px solid var(--ink);align-self:flex-start}
 .segb{border:0;padding:6px 14px;font-size:14px}
 .segb[aria-selected="true"]{background:var(--ink);color:var(--paper)}
 .guide{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
@@ -207,6 +207,22 @@ const FN="https://"+PROJECT+".supabase.co/functions/v1";
 const API=FN+"/saifuban-app";
 const KEY_STORE="saifuban.owner";
 let guideAI="claude", guideDone={}, guideFor=null;
+
+const LINK=(href,label)=>`<div class="row"><a class="btn primary" href="${href}" target="_blank" rel="noopener" data-step="2">${label}</a></div>`;
+const GUIDES=[
+ {id:"claude",label:"Claude",steps:(step)=>[
+  step(2,"Claudeのコネクタ画面を開く",LINK("https://claude.ai/settings/connectors","Claudeのコネクタ画面を開く")+`<div class="note">スマホのClaudeアプリでは追加できません。アプリが開いてしまうときは、SafariやChromeで claude.ai/settings/connectors を開いてください。有料プランが必要です。</div>`),
+  step(3,"「カスタムコネクタを追加」を押して貼る",`<div class="note">名前は「財布番」、URLの欄にコピーしたURLを貼って「追加」。会話の「+」メニューで財布番がオンになっているかも確かめてください。</div>`)]},
+ {id:"chatgpt",label:"ChatGPT",steps:(step)=>[
+  step(2,"ChatGPTの設定を開く",LINK("https://chatgpt.com/#settings/Connectors","ChatGPTの設定を開く")+`<div class="note">ブラウザで開いてください。「アプリとコネクタ」→「詳細設定」で「開発者モード」をオンにします。有料プランが必要です。</div>`),
+  step(3,"「作成」からURLを貼る",`<div class="note">名前は「財布番」、URLの欄にコピーしたURLを貼り、認証は「なし」で作成。会話の「+」メニューから財布番を選んで使います。</div>`)]},
+ {id:"muse",label:"Muse",steps:(step,url)=>[
+  step(2,"Museのチャットを開く",`<div class="note">スマホのMuseアプリでも大丈夫です。設定画面は使いません。</div>`),
+  step(3,"この文をMuseに送る",`<code id="mm" class="urlbox">このMCPサーバーにつないで、ツールを試して、「財布番」というスキルとして保存して。認証はなし。URL: ${url||"(ステップ1のURL)"}</code><div class="row"><button data-copy="mm" data-step="3" class="primary">文をコピー</button></div><div class="note">${url?"":"URLの部分は自分のURLに置き換えてください。"}認証を聞かれたら「なし」と答えます。</div>`)]},
+ {id:"other",label:"その他",steps:(step)=>[
+  step(2,"AIの設定でコネクタを探す",`<div class="note">「コネクタ」「MCPサーバー」「ツール」「連携」などの名前の設定にあります。URLでつなぐMCP(リモートMCP)に対応したAIで使えます。Cursor・VS Codeなどは設定ファイルのMCPの欄に書きます。</div>`),
+  step(3,"URLを貼って保存する",`<div class="note">名前は「財布番」にしておくと分かりやすいです。認証はなしで大丈夫です。</div>`)]},
+];
 let OWNER=null, D=null, newKey=null, stampId=null, busy=false, wizOpen=false, ownerReveal=null, pushState="checking", swReg=null;
 const wiz={daily:1000,auto:300};
 const DAILY_OPTS=[100,500,1000,3000,10000], AUTO_OPTS=[0,100,300,1000];
@@ -363,22 +379,17 @@ function renderTop(){
     :pushState==="needs-install"?`<div class="nudge"><div><b>通知を受け取るには</b><div class="note">共有ボタン →「ホーム画面に追加」から開いてください</div></div><button data-tab="setup">やり方</button></div>`:"";
   const ga=!newKey&&guideFor?D.agents.find(x=>x.id===guideFor):null;
   if(newKey||ga){
-    const isClaude=guideAI==="claude";
     const name=newKey?newKey.name:ga.name;
+    const G=GUIDES.find(g=>g.id===guideAI)||GUIDES[0];
     const step=(n,title,body)=>`<li class="gstep${guideDone[n]?" done":""}"><span class="gnum">${guideDone[n]?"✓":n}</span><div><b>${title}</b>${body}</div></li>`;
     const step1=newKey
       ?step(1,"URLをコピーする",`<code id="nu" class="urlbox">${FN}/saifuban-mcp/${esc(newKey.key)}</code><div class="row"><button data-copy="nu" data-step="1" class="primary">URLをコピー</button></div>`)
       :step(1,"つなぐURLを用意する",`<div class="note">前にコピーしたURLがあれば、それをそのまま使えます。手元にないときは、作り直してください(前のURLは使えなくなります)。</div><div class="row"><button data-rotate="${ga.id}" class="primary">URLを作り直す</button></div>`);
     con.innerHTML=`<div class="connect"><h2>「${esc(name)}」をAIにつなぐ</h2>
-      <div class="seg" role="tablist" aria-label="使っているAI"><button class="segb" data-guide="claude" aria-selected="${isClaude}">Claude</button><button class="segb" data-guide="other" aria-selected="${!isClaude}">ほかのAI</button></div>
+      <div class="seg" role="tablist" aria-label="使っているAI">${GUIDES.map(g=>`<button class="segb" data-guide="${g.id}" aria-selected="${guideAI===g.id}">${g.label}</button>`).join("")}</div>
       <ol class="guide">
         ${step1}
-        ${isClaude
-          ?step(2,"Claudeのコネクタ画面を開く",`<div class="row"><a class="btn primary" href="https://claude.ai/settings/connectors" target="_blank" rel="noopener" data-step="2">コネクタ画面を開く</a></div><div class="note">スマホのClaudeアプリではコネクタを追加できません。アプリが開いてしまうときは、SafariやChromeで claude.ai を開いてください。</div>`)
-          :step(2,"AIの設定でコネクタを探す",`<div class="note">「コネクタ」「MCPサーバー」「ツール」「連携」などの名前の設定にあります。リモートMCP(URLでつなぐ形)に対応したAIで使えます。</div>`)}
-        ${isClaude
-          ?step(3,"「カスタムコネクタを追加」を押して貼る",`<div class="note">名前は「財布番」、URLの欄にコピーしたURLを貼って「追加」を押せば完了です。会話の「+」メニューで財布番がオンになっているかも確かめてください。</div>`)
-          :step(3,"URLを貼って保存する",`<div class="note">名前は「財布番」にしておくと分かりやすいです。</div>`)}
+        ${G.steps(step,newKey?`${FN}/saifuban-mcp/${esc(newKey.key)}`:"").join("")}
         ${step(4,"つながったか試す",`<div class="note">AIに「財布番で今日の残り予算を見て」と頼んでください。残りの金額が返ってくれば成功です。</div>`)}
       </ol>
       ${newKey?`<div class="note">このURLはこの画面を閉じると二度と表示されません。人に見せないでください(なくしたら作り直せます)。</div>`:""}
