@@ -267,19 +267,26 @@
     if (out === undefined) return null;
     return s.replace(t, out);
   }
+  // ブラウザの自動翻訳と書き換え合いになって固まらないよう、同じ場所は数回までしか書き換えない
+  const hits = new WeakMap();
+  function ok(n) { const c = (hits.get(n) || 0) + 1; hits.set(n, c); return c <= 3; }
   function walk(root) {
-    if (root.nodeType === 3) { const v = tr(root.nodeValue); if (v !== null) root.nodeValue = v; return; }
+    if (root.nodeType === 3) { const v = tr(root.nodeValue); if (v !== null && ok(root)) root.nodeValue = v; return; }
     if (root.nodeType !== 1 || root.closest("script,style,input,textarea")) return;
     const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     let n; const list = [];
     while ((n = w.nextNode())) if (!n.parentNode.closest("script,style")) list.push(n);
-    for (const n of list) { const v = tr(n.nodeValue); if (v !== null) n.nodeValue = v; }
+    for (const n of list) { const v = tr(n.nodeValue); if (v !== null && ok(n)) n.nodeValue = v; }
     const els = root.querySelectorAll ? [root, ...root.querySelectorAll("[placeholder],[aria-label],[title]")] : [];
     for (const e of els) for (const a of ["placeholder", "aria-label", "title"]) {
-      const v = e.getAttribute && e.getAttribute(a); if (v) { const x = tr(v); if (x !== null) e.setAttribute(a, x); }
+      const v = e.getAttribute && e.getAttribute(a); if (v) { const x = tr(v); if (x !== null && ok(e)) e.setAttribute(a, x); }
     }
   }
   function start() {
+    // ブラウザの自動翻訳を止める(英語表示を選んだ人に日本語へ戻されないように)
+    const h = document.documentElement;
+    h.setAttribute("translate", "no"); h.classList.add("notranslate");
+    if (!document.querySelector('meta[name="google"]')) { const m = document.createElement("meta"); m.name = "google"; m.content = "notranslate"; document.head.appendChild(m); }
     document.title = "Saifuban — your AI asks before it spends";
     walk(document.body);
     new MutationObserver((ms) => {
