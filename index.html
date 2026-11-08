@@ -44,6 +44,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-siz
 .receipt{display:flex;flex-direction:column;gap:12px;height:calc(100% - 56px);min-height:520px;padding-top:6px}
 .num{font-variant-numeric:tabular-nums}
 hr{border:0;border-top:1px solid var(--rule);margin:0}
+.demo{display:block;width:100%;max-width:480px;aspect-ratio:1;margin:14px auto 4px;border:1px solid var(--rule);border-radius:12px;background:#f7f6f2}
 header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--rule);flex:none}
 .scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:12px;margin-inline:-4px;padding-inline:4px;padding-bottom:32px}
 .brand{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -300,6 +301,7 @@ function showWelcome(reason){
   w.innerHTML=`<img class="ico" src="icon-192.png" alt="">
     <h2>AIがお金を使う前に、あなたに聞きにくる</h2>
     <p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>
+    <video class="demo" src="demo-${LANG==="en"?"en":"ja"}.mp4" autoplay muted loop playsinline preload="metadata"></video>
     ${reason==="invalid"?`<div class="err"><b>この端末の合言葉が使えなくなっています</b><div>もう一度入れ直すか、新しく始めてください。</div></div>`:""}
     <div class="row"><button id="signup" class="primary big">はじめる(無料)</button></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div>
     <details class="more"><summary>別の端末ですでに使っている</summary><div class="inner">

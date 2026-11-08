@@ -5,6 +5,8 @@
 
 👉 https://ut181749ut.github.io/saifuban/
 
+<img src="demo-ja.gif" width="420" alt="デモ: AIが無断で支払おうとして、スマホで却下する">
+
 ---
 
 ## 日本語
@@ -26,6 +28,8 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 3. AIに「財布番で今日の残り予算を見て」と聞いて確認
 
 ## English
+
+<img src="demo-en.gif" width="420" alt="Demo: the AI tries to pay on its own and you reject it from your phone">
 
 Your AI agent asks Saifuban before every payment. Saifuban answers using your rules.
 
