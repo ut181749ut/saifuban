@@ -14,11 +14,14 @@ self.addEventListener("push", (e) => {
     requireInteraction: d.type === "pending",
     data: d,
   };
+  const en = d.lang === "en";
   if (d.type === "pending" && d.approve_url) {
-    opt.actions = [{ action: "approve", title: "承認する" }, { action: "reject", title: "却下" }];
+    opt.actions = en
+      ? [{ action: "approve", title: "Approve" }, { action: "reject", title: "Reject" }]
+      : [{ action: "approve", title: "承認する" }, { action: "reject", title: "却下" }];
   }
   e.waitUntil(Promise.all([
-    self.registration.showNotification(d.title || "AIの財布番", opt),
+    self.registration.showNotification(d.title || (en ? "Saifuban" : "AIの財布番"), opt),
     self.clients.matchAll({ type: "window" }).then((ws) => ws.forEach((w) => w.postMessage({ type: "refresh" }))),
   ]));
 });
@@ -31,10 +34,15 @@ self.addEventListener("notificationclick", (e) => {
     e.waitUntil(
       fetch(approve ? d.approve_url : d.reject_url, { method: "POST" })
         .then((r) => r.json())
-        .then((j) => self.registration.showNotification(
-          j.ok ? (approve ? "承認しました" : "却下しました") : "この申請はもう判断済みです",
-          { body: j.ok ? String(d.title || "").replace(/^承認待ち /, "") : "", tag: "done-" + d.id, icon: "icon-192.png" }))
-        .catch(() => self.registration.showNotification("送れませんでした", { body: "アプリを開いて判断してください", icon: "icon-192.png" }))
+        .then((j) => {
+          const en = d.lang === "en";
+          const title = j.ok ? (approve ? (en ? "Approved" : "承認しました") : (en ? "Rejected" : "却下しました"))
+            : (en ? "This request was already decided" : "この申請はもう判断済みです");
+          const body = j.ok ? String(d.short || String(d.title || "").replace(/^承認待ち /, "")) : "";
+          return self.registration.showNotification(title, { body, tag: "done-" + d.id, icon: "icon-192.png" });
+        })
+        .catch(() => self.registration.showNotification(d.lang === "en" ? "Couldn't send" : "送れませんでした",
+          { body: d.lang === "en" ? "Open the app to decide" : "アプリを開いて判断してください", icon: "icon-192.png" }))
         .then(() => self.clients.matchAll({ type: "window" }).then((ws) => ws.forEach((w) => w.postMessage({ type: "refresh" }))))
     );
     return;

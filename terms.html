@@ -15,7 +15,9 @@ h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 6px;padding-top
 p,li{margin:6px 0}ul,ol{padding-left:1.4em}.fade{color:var(--fade);font-size:14px}a{color:inherit}
 </style>
 </head>
-<body><main>
+<body data-title-ja="利用規約 | AIの財布番" data-title-en="Terms of Service | Saifuban"><main>
+<button id="langbtn" style="float:right;font:inherit;font-size:12px;padding:3px 8px;background:transparent;color:var(--fade);border:1px solid var(--rule);cursor:pointer">English</button>
+<div data-l="ja">
 <p class="fade"><a href="./">← AIの財布番にもどる</a></p>
 <h1>利用規約</h1>
 <p class="fade">制定日: 2026年11月7日</p>
@@ -59,4 +61,55 @@ p,li{margin:6px 0}ul,ol{padding-left:1.4em}.fade{color:var(--fade);font-size:14p
 <p>この規約は日本の法律にしたがって解釈されます。本サービスに関して争いが起きた場合は、運営者の住所地を管轄する地方裁判所を第一審の専属的合意管轄裁判所とします。</p>
 
 <p class="fade" style="margin-top:36px">お問い合わせ: <a href="https://github.com/ut181749ut/saifuban/issues">GitHubのIssues</a><br>関連: <a href="privacy.html">プライバシーポリシー</a></p>
-</main></body></html>
+</div>
+<div data-l="en" hidden>
+<p class="fade"><a href="./">← Back to Saifuban</a></p>
+<h1>Terms of Service</h1>
+<p class="fade">Effective: November 7, 2026</p>
+<p>These terms are the rules for using Saifuban (the "Service"). By starting to use the Service, you agree to these terms. The Japanese version is the official version; this English translation is provided for convenience.</p>
+
+<h2>1. What the Service does</h2>
+<p>Before an AI agent spends money, the Service decides whether the payment is allowed according to rules you set (such as a daily budget and an amount that is approved automatically), and asks for your approval on your phone when needed.</p>
+<p><b>The Service does not move money.</b> It never makes payments, transfers or charges, and it never receives card or bank account details. Actual payments are made by the AI agent or by the shop or service involved.</p>
+
+<h2>2. Your responsibilities</h2>
+<ul>
+<li>Keep your passphrase (your account key) and the URLs that connect your AIs safe. Anyone who knows them can act as your account or your AI. If you think one has leaked, make a new one right away.</li>
+<li>If an AI agent pays without asking the Service, or ignores the Service's decision, the Service cannot stop it. Making sure your AI always goes through the Service is your responsibility.</li>
+<li>If you use the feature for storing API keys, you confirm that you are allowed to store those keys with the Service.</li>
+</ul>
+
+<h2>3. Prohibited use</h2>
+<ul>
+<li>Using the Service for illegal purposes</li>
+<li>Using someone else's passphrase, URL or API key without permission</li>
+<li>Putting excessive load on the Service or accessing it without authorization</li>
+<li>Interfering with the operation of the Service</li>
+</ul>
+
+<h2>4. No guarantees</h2>
+<p>The Service is currently in a trial phase. We do not guarantee that it will always work correctly, that notifications will always arrive, or that it will never stop. Network delays, outages of outside services (notification delivery, the database, AI providers and so on), or mistakes in settings may delay approvals or lead to unintended decisions.</p>
+
+<h2>5. Limitation of liability</h2>
+<p>Except in cases of intent or gross negligence by the operator, the operator is not liable for damages caused by using the Service. Where the operator is liable, liability is limited to direct and ordinary damages.</p>
+
+<h2>6. Fees</h2>
+<p>The Service is currently free. If it becomes paid, we will announce this on the site in advance.</p>
+
+<h2>7. Changes and suspension</h2>
+<p>The operator may change or stop the Service without notice. Accounts used in violation of these terms may be suspended.</p>
+
+<h2>8. Changes to these terms</h2>
+<p>These terms may change. Updated terms take effect when they are posted on this page.</p>
+
+<h2>9. Governing law and jurisdiction</h2>
+<p>These terms are governed by the laws of Japan. Any dispute about the Service will be handled exclusively, in the first instance, by the district court with jurisdiction over the operator's address.</p>
+<p class="fade" style="margin-top:36px">Contact: <a href="https://github.com/ut181749ut/saifuban/issues">GitHub Issues</a><br>See also: <a href="privacy.html">Privacy Policy</a></p>
+</div>
+</main>
+<script>
+(function(){let l="ja";try{const q=new URLSearchParams(location.search).get("lang");if(q==="en"||q==="ja"){localStorage.setItem("saifuban.lang",q);l=q}else if(localStorage.getItem("saifuban.lang")==="en")l="en"}catch(_){}
+function apply(){document.documentElement.lang=l;document.querySelectorAll("[data-l]").forEach(e=>e.hidden=e.dataset.l!==l);document.title=l==="en"?document.body.dataset.titleEn:document.body.dataset.titleJa;const b=document.getElementById("langbtn");b.textContent=l==="en"?"日本語":"English"}
+document.getElementById("langbtn").addEventListener("click",()=>{l=l==="en"?"ja":"en";try{localStorage.setItem("saifuban.lang",l)}catch(_){}apply()});apply()})();
+</script>
+</body></html>

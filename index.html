@@ -63,6 +63,8 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--fade);min-width:0}
 input{font:inherit;font-size:16px;color:var(--ink);background:transparent;border:0;border-bottom:1.5px solid var(--ink);border-radius:0;padding:4px 2px;width:100%;min-width:0}
 code,.urlbox{font-family:var(--f-body);font-size:12px;word-break:break-all;white-space:pre-wrap;border:1px solid var(--rule);background:var(--card);padding:8px;display:block;user-select:all}
+.hright{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
+.langbtn{font-size:12px;padding:3px 8px;border:1px solid var(--rule);color:var(--fade)}
 .kill{color:var(--shu);border-color:var(--shu);font-weight:700;font-size:14px;padding:7px 12px;flex:none}
 .kill:hover,.kill.on{background:var(--shu);color:var(--paper)}
 .banner{border:2px solid var(--shu);color:var(--shu);text-align:center;font-weight:700;padding:6px;font-size:14px}
@@ -165,16 +167,19 @@ img.ico{width:56px;height:56px}
 .gstep.done b{color:var(--fade)}
 .howto{align-self:flex-start;border:0;padding:2px 0;margin-top:2px;font-size:13px;text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
 .howto:hover{background:transparent;color:var(--shu)}
+#langsw{white-space:nowrap}
+html[lang="en"] .why::before{content:"Reason: "}
 a.btn{display:inline-block;text-decoration:none;border:1.5px solid var(--ink);padding:8px 14px;font-weight:700}
 a.btn.primary{background:var(--ink);color:var(--paper)}
 </style>
+<script src="i18n.js"></script>
 </head>
 <body>
 <div class="wrap">
  <main class="receipt">
   <header>
     <div class="brand"><h1>AIの財布番</h1><div class="status"><span id="dot" class="dot-i off"></span><span id="stat">準備中…</span><span id="clock" class="num"></span><button id="refresh" aria-label="更新" hidden>更新</button></div></div>
-    <button id="kill" class="kill" disabled hidden>緊急停止</button>
+    <div class="hright"><button id="langbtn" class="langbtn" lang="en">English</button><button id="kill" class="kill" disabled hidden>緊急停止</button></div>
   </header>
   <div class="scroll" id="scroll">
   <section id="welcome" class="welcome" hidden></section>
@@ -227,6 +232,14 @@ let OWNER=null, D=null, newKey=null, stampId=null, busy=false, wizOpen=false, ow
 const wiz={daily:1000,auto:300};
 const DAILY_OPTS=[100,500,1000,3000,10000], AUTO_OPTS=[0,100,300,1000];
 
+const CURX=()=>D&&D.currency==="USD"?"USD":"JPY";
+const RATE=()=>Number(D&&D.usd_jpy)||155;
+const money=n=>CURX()==="USD"?"$"+((Number(n)||0)/RATE()).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):yen(n);
+const toD=j=>CURX()==="USD"?+((Number(j)||0)/RATE()).toFixed(2):Math.round(Number(j)||0);
+const fromD=v=>CURX()==="USD"?int(Number(v)*RATE()):int(v);
+const CL=()=>CURX()==="USD"?"$":"円";
+const fmtNote=s=>CURX()==="USD"?String(s||"").replace(/([\d,]+)円/g,(m,n)=>"$"+(Number(n.replace(/,/g,""))/RATE()).toFixed(2)):String(s||"");
+let wizCur=null;
 const yen=n=>{n=Number(n)||0;return "¥"+(n>0&&n<10&&n%1?n.toFixed(2):Math.round(n).toLocaleString("ja-JP"))};
 const hhmm=t=>{const d=new Date(t);return d.toLocaleDateString("ja-JP",{month:"numeric",day:"numeric"})+" "+d.toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})};
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -294,6 +307,7 @@ function showWelcome(reason){
       <div class="full"><button id="restore" class="primary">この端末で使う</button></div></div></details>`;
 }
 function showApp(){
+  syncLang();
   $("welcome").hidden=true;
   document.querySelector(".status").hidden=false;
   ["kill","refresh","panel","agents","nudge","connect"].forEach(id=>$(id).hidden=false);
@@ -350,23 +364,23 @@ function render(){
     const left=Math.max(0,a.daily-a.spent-a.reserved),p=a.daily?Math.min(100,(a.spent+a.reserved)/a.daily*100):100;
     const off=kill||!a.active;
     return `<div class="agent"><div class="ahead"><span class="name">${esc(a.name)}</span><span class="state${off?" off":""}">${off?"停止中":"稼働中"}</span></div>
-      <div class="left num">${yen(left)}<small>あと使える</small></div>
+      <div class="left num">${money(left)}<small>あと使える</small></div>
       <div class="gauge" aria-hidden="true"><i class="${p>80?"hot":""}" style="width:${p}%"></i></div>
-      <div class="sub2 num">使った ${yen(a.spent)} / ${yen(a.daily)}</div>
+      <div class="sub2 num">使った ${money(a.spent)} / ${money(a.daily)}</div>
       <button class="howto" data-howto="${a.id}">つなぎ方</button></div>`}).join("");
   const q=D.requests.filter(r=>r.status==="pending"),stamped=D.requests.find(r=>r.id===stampId);
   const qc=$("qc");qc.textContent=q.length;qc.hidden=!q.length;
   const cards=(stamped&&stamped.status!=="pending"?[stamped]:[]).concat(q);
   $("tab-queue").innerHTML=cards.length?cards.map(r=>`<div class="req">
-    <div><b>${esc(r.merchant)}</b><div class="meta">${esc(agentName(r.agent_id))} · ${hhmm(r.created_at)} · ${esc(r.note)}</div></div>
-    <div class="amt num">${yen(r.amount)}</div>
+    <div><b>${esc(r.merchant)}</b><div class="meta">${esc(agentName(r.agent_id))} · ${hhmm(r.created_at)} · ${esc(fmtNote(r.note))}</div></div>
+    <div class="amt num">${money(r.amount)}</div>
     <div class="why">${esc(r.reason||"(理由なし)")}</div>
     ${r.status==="pending"?`<div class="acts"><button data-no="${r.id}">却下する</button><button class="approve" data-ok="${r.id}" aria-label="承認する">承認</button></div>`:`<div class="stamp">承認</div>`}
   </div>`).join(""):`<div class="empty">${D.agents.length?"いま判断が必要なものはありません。":"まだAIがつながっていません。<br>上の「AIをつなぐ」から始めてください。"}</div>`;
   $("tab-log").innerHTML=D.requests.length?D.requests.map(r=>{const[c,l]=PILL[r.status]||["m-stop",r.status];const v=["denied","rejected","expired"].includes(r.status);return `<div class="item${v?" voided":""}">
     <span class="mark ${c}">${l}</span>
-    <div class="m"><div>${esc(r.merchant)}</div><small>${hhmm(r.created_at)} · ${esc(agentName(r.agent_id))}</small><small>${esc(r.note)}${r.reason?" · "+esc(r.reason):""}</small></div>
-    <span class="num">${yen(r.amount)}</span></div>`}).join(""):`<div class="empty">まだ記録はありません</div>`;
+    <div class="m"><div>${esc(r.merchant)}</div><small>${hhmm(r.created_at)} · ${esc(agentName(r.agent_id))}</small><small>${esc(fmtNote(r.note))}${r.reason?" · "+esc(r.reason):""}</small></div>
+    <span class="num">${money(r.amount)}</span></div>`}).join(""):`<div class="empty">まだ記録はありません</div>`;
   if(!$("tab-rules").contains(document.activeElement))renderRules();
   if(!$("tab-setup").contains(document.activeElement))renderSetup();
   renderTop();
@@ -399,10 +413,12 @@ function renderTop(){
         <div class="row" style="padding-top:6px"><button data-copy="nk">キーをコピー</button></div></details>`:""}</div>`;
     return}
   if(!D.agents.length||wizOpen){
+    if(wizCur!==CURX()){wizCur=CURX();Object.assign(wiz,wizCur==="USD"?{daily:10,auto:2}:{daily:1000,auto:300})}
+    const U=CURX()==="USD",dOpts=U?[1,5,10,20,50,100]:DAILY_OPTS,aOpts=U?[0,1,2,5]:AUTO_OPTS,fm=v=>U?"$"+v:yen(v);
     const chip=(k,v,label)=>`<button class="chip" data-chip="${k}:${v}" aria-pressed="${wiz[k]===v}">${label}</button>`;
     con.innerHTML=`<div class="connect"><h2>${D.agents.length?"別のAIをつなぐ":"AIをつなぐ"}</h2>
-      <div class="q"><b>1日いくらまで使っていい?</b><div class="chips">${DAILY_OPTS.map(v=>chip("daily",v,yen(v))).join("")}</div></div>
-      <div class="q"><b>いくら以下なら、あなたに聞かずに払っていい?</b><div class="chips">${AUTO_OPTS.map(v=>chip("auto",v,v?yen(v)+"まで":"毎回聞く")).join("")}</div>
+      <div class="q"><b>1日いくらまで使っていい?</b><div class="chips">${dOpts.map(v=>chip("daily",v,fm(v))).join("")}</div></div>
+      <div class="q"><b>いくら以下なら、あなたに聞かずに払っていい?</b><div class="chips">${aOpts.map(v=>chip("auto",v,v?fm(v)+"まで":"毎回聞く")).join("")}</div>
         <div class="note">それより高い支払いは、あなたのスマホに承認を聞きにきます。</div></div>
       <label class="q"><b>名前(なくてもOK)</b><input id="n-name" placeholder="例: 自宅のClaude"></label>
       <div class="row"><button id="add" class="primary big">つなぐ</button>${D.agents.length?'<button id="wiz-close">やめる</button>':""}</div></div>`;
@@ -434,7 +450,11 @@ function renderSetup(){
       <div class="full note">AIに設定する住所(ベースURL):</div>
       <code id="base-${p}" class="full">${FN}${v.base}</code>
       <div class="full row"><button data-copy="base-${p}">住所をコピー</button></div></div>`}).join("");
-  $("tab-setup").innerHTML=`<div class="rule"><div class="head"><b>スマホ通知</b><span class="note">${{on:"オン",off:"オフ",denied:"ブロック中","needs-install":"ホーム画面に追加が必要",unsupported:"非対応",checking:""}[pushState]}</span></div>${pushCard}</div>
+  const U=CURX()==="USD";
+  const curCard=`<div class="rule"><div class="head"><b>通貨</b><span class="note">${U?"ドル ($)":"円 (¥)"}</span></div>
+      <div class="full note">金額を円とドルのどちらで表示・設定するかを選べます。ドルは1ドル=${esc(RATE())}円で換算します(中身の記録は円のままです)。</div>
+      <div class="full row"><button data-cur="JPY"${U?"":' class="primary"'}>円 (¥)</button><button data-cur="USD"${U?' class="primary"':""}>ドル ($)</button></div></div>`;
+  $("tab-setup").innerHTML=curCard+`<div class="rule"><div class="head"><b>スマホ通知</b><span class="note">${{on:"オン",off:"オフ",denied:"ブロック中","needs-install":"ホーム画面に追加が必要",unsupported:"非対応",checking:""}[pushState]}</span></div>${pushCard}</div>
     <div class="rule"><div class="head"><b>合言葉(アカウント)</b></div>
       <div class="full note">別の端末で開くときや、スマホを替えたときに使います。人に見せないでください。</div>
       <code id="ok-key2" class="full">${esc(OWNER)}</code>
@@ -450,11 +470,11 @@ function renderRules(){
   if(!D)return;
   $("tab-rules").innerHTML=D.agents.map(a=>`<div class="rule" data-id="${a.id}">
     <div class="head"><b>${esc(a.name)}</b><span class="note">${a.active?"稼働中":"停止中"}</span></div>
-    <label>1日いくらまで(円)<input id="r-${a.id}-daily" data-f="daily" type="number" inputmode="numeric" min="0" value="${a.daily}"></label>
-    <label>聞かずに払っていい額(円)<input id="r-${a.id}-auto" data-f="auto" type="number" inputmode="numeric" min="0" value="${a.auto}"></label>
+    <label>1日いくらまで(${CL()})<input id="r-${a.id}-daily" data-f="daily" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.daily)}"></label>
+    <label>聞かずに払っていい額(${CL()})<input id="r-${a.id}-auto" data-f="auto" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.auto)}"></label>
     <div class="full row"><button data-save="${a.id}" class="primary">保存</button><button data-howto="${a.id}">つなぎ方を見る</button></div>
     <details class="more"><summary>もっと細かく</summary><div class="inner">
-      <label>1回の上限(円)<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="numeric" min="0" value="${a.per_tx}"></label>
+      <label>1回の上限(${CL()})<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.per_tx)}"></label>
       <label>使ってよい支払先(空欄ならどこでもOK)<input id="r-${a.id}-merchants" data-f="merchants" value="${esc(a.merchants.join(", "))}" placeholder="例: OpenRouter, AWS"></label>
       <div class="full row"><button data-toggle="${a.id}">${a.active?"このAIを止める":"再開する"}</button><button data-rotate="${a.id}">つなぐURLを作り直す</button><button data-del="${a.id}" class="danger">このAIを削除</button><span id="cf-${a.id}" class="note" hidden>もう一度押すと削除します</span></div>
       <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 聞かずに払っていい額。予算は日本時間0時にリセット、24時間放置の申請は失効します。</div>
@@ -474,8 +494,11 @@ document.addEventListener("click",async e=>{
   if(b.dataset.guide){guideAI=b.dataset.guide;return renderTop()}
   if(b.dataset.copy){if(b.dataset.step){guideDone[b.dataset.step]=true;setTimeout(renderTop,50)}const t=$(b.dataset.copy).textContent;
     try{await navigator.clipboard.writeText(t);toast("コピーしました")}catch(_){const r=document.createRange();r.selectNodeContents($(b.dataset.copy));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("選択しました。長押しでコピーしてください")}return}
+  if(b.id==="langbtn"){const nl=LANG==="en"?"ja":"en";try{localStorage.setItem("saifuban.lang",nl);localStorage.removeItem("saifuban.lang_synced")}catch(_){}
+    if(OWNER)await api("set_lang",{lang:nl});try{if(OWNER)localStorage.setItem("saifuban.lang_synced",nl)}catch(_){}
+    const u=new URL(location.href);u.searchParams.delete("lang");location.replace(u.href);return}
   if(b.id==="signup"){b.disabled=true;OWNER=null;const r=await api("signup");b.disabled=false;
-    if(r.owner_key){OWNER=r.owner_key;writeKey(OWNER);ownerReveal=r.owner_key;showWelcome()}else toast(errText(r.error||"server_error"));return}
+    if(r.owner_key){OWNER=r.owner_key;writeKey(OWNER);ownerReveal=r.owner_key;try{localStorage.removeItem("saifuban.lang_synced")}catch(_){}syncLang();showWelcome()}else toast(errText(r.error||"server_error"));return}
   if(b.id==="saved"){ownerReveal=null;return showApp()}
   if(b.id==="restore"){const k=val("in-key").trim();if(!/^sbo_[0-9a-f]{48}$/.test(k)){toast("合言葉の形が違います(sbo_ で始まる52文字)");return}
     OWNER=k;const d=await api("dashboard");if(d.error){OWNER=null;toast(errText(d.error));return}
@@ -491,7 +514,7 @@ document.addEventListener("click",async e=>{
     const id=b.dataset.toggle||b.dataset.save;if(!UUID.test(id))return;const a=D.agents.find(x=>x.id===id);if(!a)return;
     const card=b.closest(".rule"),g=f=>card.querySelector(`[data-f="${f}"]`).value;
     const active=b.dataset.toggle?!a.active:a.active;
-    return run("update_agent",{id,name:a.name,per_tx:int(g("per_tx")),daily:int(g("daily")),auto:int(g("auto")),merchants:splitM(g("merchants")),active},
+    return run("update_agent",{id,name:a.name,per_tx:fromD(g("per_tx")),daily:fromD(g("daily")),auto:fromD(g("auto")),merchants:splitM(g("merchants")),active},
       b.dataset.toggle?(active?`${a.name}を再開しました`:`${a.name}を止めました`):`${a.name}のルールを保存しました`);
   }
   if(b.dataset.del){const id=b.dataset.del;if(!UUID.test(id))return;
@@ -502,7 +525,7 @@ document.addEventListener("click",async e=>{
   if(b.id==="wiz-close"){wizOpen=false;return renderTop()}
   if(b.id==="add"){
     const name=(val("n-name").trim()||("AI "+(D.agents.length+1))).slice(0,60);
-    const r=await run("create_agent",{name,per_tx:wiz.daily,daily:wiz.daily,auto:Math.min(wiz.auto,wiz.daily),merchants:[]},"つなぐURLができました");
+    const r=await run("create_agent",{name,per_tx:fromD(wiz.daily),daily:fromD(wiz.daily),auto:fromD(Math.min(wiz.auto,wiz.daily)),merchants:[]},"つなぐURLができました");
     if(r&&r.agent_key){guideDone={};guideFor=null;newKey={name,key:r.agent_key};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
   if(b.dataset.hidekey){newKey=null;guideFor=null;return renderTop()}
   if(b.dataset.howto){if(!UUID.test(b.dataset.howto))return;newKey=null;guideFor=b.dataset.howto;guideDone={};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"});return}
@@ -510,6 +533,7 @@ document.addEventListener("click",async e=>{
     if(delArm!=="rot-"+id){delArm="rot-"+id;b.textContent="もう一度押すと今のURLは使えなくなります";return}
     delArm=null;const r=await run("rotate_key",{id},"新しい接続URLを発行しました");
     if(r&&r.agent_key){guideDone={};guideFor=null;newKey={name:a.name,key:r.agent_key};renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
+  if(b.dataset.cur){const c=b.dataset.cur==="USD"?"USD":"JPY";if(c===CURX())return;return run("set_currency",{currency:c},c==="USD"?"ドル表示にしました":"円表示にしました")}
   if(b.id==="push-on")return enablePush();
   if(b.id==="push-off")return disablePush();
   if(b.id==="push-test"){const t=await api("push_test");toast(t.sent?"テスト通知を送りました":"送れませんでした。通知をオンにし直してください");return}
@@ -522,6 +546,9 @@ document.addEventListener("click",async e=>{
     delArm=null;return run("set_provider_key",{provider:p,key:""},`${PROV[p].label}のキーを外しました`)}
 });
 
+const LANG=window.SAIFUBAN_LANG||"ja";
+{const l=$("langbtn");if(LANG==="en"){l.textContent="日本語";l.lang="ja"}}
+async function syncLang(){try{if(OWNER&&localStorage.getItem("saifuban.lang_synced")!==LANG){const r=await api("set_lang",{lang:LANG});if(r&&r.ok)localStorage.setItem("saifuban.lang_synced",LANG)}}catch(_){}}
 OWNER=readKey();
 if(OWNER){showApp()}else{setStatus(false,"");showWelcome()}
 checkPush();

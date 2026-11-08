@@ -15,7 +15,9 @@ h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 6px;padding-top
 p,li{margin:6px 0}ul,ol{padding-left:1.4em}.fade{color:var(--fade);font-size:14px}a{color:inherit}
 </style>
 </head>
-<body><main>
+<body data-title-ja="プライバシーポリシー | AIの財布番" data-title-en="Privacy Policy | Saifuban"><main>
+<button id="langbtn" style="float:right;font:inherit;font-size:12px;padding:3px 8px;background:transparent;color:var(--fade);border:1px solid var(--rule);cursor:pointer">English</button>
+<div data-l="ja">
 <p class="fade"><a href="./">← AIの財布番にもどる</a></p>
 <h1>プライバシーポリシー</h1>
 <p class="fade">制定日: 2026年11月7日</p>
@@ -28,6 +30,7 @@ p,li{margin:6px 0}ul,ol{padding-left:1.4em}.fade{color:var(--fade);font-size:14p
 <li><b>AIをつなぐURLの鍵</b>: 元に戻せない形(ハッシュ値)で保存します。</li>
 <li><b>支払いの申請</b>: AIが送ってきたお店の名前、金額、理由、判断の結果、日時。</li>
 <li><b>通知の宛先</b>: スマホ通知を受け取るためにブラウザが発行する宛先情報。ntfyを使う場合はそのトピック名。</li>
+<li><b>言語の設定</b>: 日本語と英語のどちらで使っているか(通知の言語を合わせるため)。</li>
 <li><b>預けたAPIキー</b>(この機能を使う場合のみ): 暗号化した保管庫に保存し、画面には末尾の数文字だけを表示します。</li>
 <li><b>AIの利用量</b>(APIキーを預けた場合のみ): AIの提供元が返す使用量と、そこから計算した金額。会話や指示の中身は保存しません。</li>
 </ul>
@@ -62,4 +65,59 @@ p,li{margin:6px 0}ul,ol{padding-left:1.4em}.fade{color:var(--fade);font-size:14p
 <p>このポリシーは変更することがあります。変更後の内容はこのページに載せた時点で効力を持ちます。</p>
 
 <p class="fade" style="margin-top:36px">お問い合わせ: <a href="https://github.com/ut181749ut/saifuban/issues">GitHubのIssues</a><br>関連: <a href="terms.html">利用規約</a></p>
-</main></body></html>
+</div>
+<div data-l="en" hidden>
+<p class="fade"><a href="./">← Back to Saifuban</a></p>
+<h1>Privacy Policy</h1>
+<p class="fade">Effective: November 7, 2026</p>
+<p>This explains what information Saifuban (the "Service") keeps and how it is used. The Japanese version is the official version; this English translation is provided for convenience.</p>
+
+<h2>1. Information we keep</h2>
+<ul>
+<li><b>Passphrase</b>: not stored as-is. We keep only a one-way hash and the first few characters for reference. The passphrase itself is stored only in the browser on your device.</li>
+<li><b>AIs and rules</b>: the names you give your AIs, budgets, auto-approve amounts, and allowed merchants.</li>
+<li><b>Connection URL keys</b>: stored as one-way hashes.</li>
+<li><b>Payment requests</b>: the merchant name, amount and reason your AI sends, the decision, and timestamps.</li>
+<li><b>Notification details</b>: the delivery address your browser issues for push notifications, and your ntfy topic name if you use ntfy.</li>
+<li><b>Language setting</b>: whether you use the Service in Japanese or English, so notifications match.</li>
+<li><b>Stored API keys</b> (only if you use this feature): kept in an encrypted vault; only the last few characters are shown on screen.</li>
+<li><b>AI usage</b> (only if you store an API key): the usage reported by the AI provider and the cost calculated from it. The content of conversations and prompts is not stored.</li>
+</ul>
+<p>We do not collect names, email addresses, postal addresses, phone numbers, card numbers or bank account numbers.</p>
+
+<h2>2. How we use it</h2>
+<ul>
+<li>To decide on your AI's requests and notify you of pending approvals</li>
+<li>To show your remaining budget and history on your screen</li>
+<li>To prevent misuse and keep the Service running safely</li>
+</ul>
+<p>We do not use your information for advertising and do not sell it to third parties.</p>
+
+<h2>3. Outside services</h2>
+<p>The Service runs on the following services, and information passes through them as needed.</p>
+<ul>
+<li>Supabase (data storage and processing; stored in the Tokyo region)</li>
+<li>GitHub Pages (hosting this site)</li>
+<li>Push notification services (Apple, Google, Mozilla and others, depending on your browser)</li>
+<li>ntfy.sh (only if you set up ntfy notifications)</li>
+<li>Anthropic, OpenAI, Google, OpenRouter (the destinations your AI requests are relayed to, only if you store an API key)</li>
+<li>Google Fonts (displaying text on screen)</li>
+</ul>
+
+<h2>4. How long we keep it</h2>
+<p>We keep your information while your account is in use. Deleted AIs are hidden but their records may remain. To ask for your data to be deleted, contact us at the address below.</p>
+
+<h2>5. Security</h2>
+<p>Connections are encrypted. Keys and passphrases are stored as one-way hashes, and API keys are stored encrypted. The database cannot be accessed directly except by the Service's own servers.</p>
+
+<h2>6. Changes to this policy</h2>
+<p>This policy may change. Updates take effect when they are posted on this page.</p>
+<p class="fade" style="margin-top:36px">Contact: <a href="https://github.com/ut181749ut/saifuban/issues">GitHub Issues</a><br>See also: <a href="terms.html">Terms of Service</a></p>
+</div>
+</main>
+<script>
+(function(){let l="ja";try{const q=new URLSearchParams(location.search).get("lang");if(q==="en"||q==="ja"){localStorage.setItem("saifuban.lang",q);l=q}else if(localStorage.getItem("saifuban.lang")==="en")l="en"}catch(_){}
+function apply(){document.documentElement.lang=l;document.querySelectorAll("[data-l]").forEach(e=>e.hidden=e.dataset.l!==l);document.title=l==="en"?document.body.dataset.titleEn:document.body.dataset.titleJa;const b=document.getElementById("langbtn");b.textContent=l==="en"?"日本語":"English"}
+document.getElementById("langbtn").addEventListener("click",()=>{l=l==="en"?"ja":"en";try{localStorage.setItem("saifuban.lang",l)}catch(_){}apply()});apply()})();
+</script>
+</body></html>
