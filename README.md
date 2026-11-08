@@ -47,11 +47,32 @@ Saifuban never moves money and never stores card or bank details. It only decide
 
 | Tool | What it does |
 |---|---|
-| `request_payment` | Ask whether a payment (`merchant`, `amount_jpy`, `reason`) is allowed. Waits up to 45 s for phone approval. |
+| `request_payment` | Ask whether a payment (`merchant`, `amount`, `currency` JPY/USD, `reason`) is allowed. Waits up to 45 s for phone approval. Returns a single-use `payment_token` when approved. |
 | `check_payment_status` | Check whether a pending request was approved. |
 | `get_budget` | Remaining budget today, per-transaction limit, auto-approve threshold, allowed merchants. |
 
 Endpoint: `https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp/<your-key>` (get your key on the site)
+
+## Hard enforcement: single-use payment tokens
+
+Calling `request_payment` is voluntary, so a prompt-injected agent could simply skip it. To make the guard enforceable, every **approved** request comes with a `payment_token` (`sbt_...`):
+
+- single-use, valid for 24 hours
+- bound to the approved merchant and amount
+- invalid if the AI is stopped or the kill switch is on
+
+Whatever actually moves the money (your payment tool, wrapper, or merchant backend) should require this token and redeem it before paying:
+
+```bash
+curl -X POST https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban/redeem \
+  -H "content-type: application/json" \
+  -d '{"token":"sbt_...","merchant":"OpenAI","amount":12.5,"currency":"USD"}'
+# => {"valid":true,"consumed":true,...}  or  {"valid":false,"error":"already_used" | "merchant_mismatch" | "amount_exceeds_approval" | ...}
+```
+
+`/verify` takes the same body and checks without consuming. No agent key is needed to redeem, so the payment side doesn't have to share secrets with the agent.
+
+API spend is already hard-enforced: when you store your provider API key in Saifuban, the agent only ever gets a proxy key.
 
 ## Links
 
