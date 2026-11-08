@@ -1,7 +1,7 @@
 # AIの財布番 (Saifuban) — a spending guard for AI agents
 
-**AIがお金を使う前に、あなたのスマホに承認を聞きにくる MCP サーバー。**
-**An MCP server that makes AI agents ask before they spend money — small amounts are auto-approved, larger ones go to your phone for one-tap approval.**
+**AIがお金を使う前に、あなたのスマホに承認を聞きにくる。AIエージェントのAPI代も1日の予算で止める。日本語・円で使えます。**
+**Hard daily caps on your AI agents' API spend, plus phone approval before any other payment.**
 
 👉 https://ut181749ut.github.io/saifuban/
 

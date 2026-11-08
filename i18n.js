@@ -290,7 +290,7 @@
     const h = document.documentElement;
     h.setAttribute("translate", "no"); h.classList.add("notranslate");
     if (!document.querySelector('meta[name="google"]')) { const m = document.createElement("meta"); m.name = "google"; m.content = "notranslate"; document.head.appendChild(m); }
-    document.title = "Saifuban — your AI asks before it spends";
+    document.title = "Saifuban — hard caps on your AI agents\u2019 spending";
     walk(document.body);
     new MutationObserver((ms) => {
       for (const m of ms) {
