@@ -303,7 +303,7 @@ function showWelcome(reason){
     ${LANG==="en"?`<p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>
     <p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>`:`<p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>
     <p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>`}
-    <p class="note">日本語・円で使えます。メール登録なし・無料。</p>
+    <p class="note">Claude・ChatGPT・Muse・Cursorで使えます。Museならチャットに1通送るだけでつながります。日本語・円で使えます。メール登録なし・無料。</p>
     ${reason==="invalid"?`<div class="err"><b>この端末の合言葉が使えなくなっています</b><div>もう一度入れ直すか、新しく始めてください。</div></div>`:""}
     <div class="row"><button id="signup" class="primary big">はじめる(無料)</button></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div>
     <video class="demo" src="${LANG==="en"?"api-en":"demo-ja"}.mp4" autoplay muted loop playsinline preload="metadata"></video>

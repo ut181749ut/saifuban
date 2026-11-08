@@ -1,6 +1,6 @@
 # AIの財布番 (Saifuban) — a spending guard for AI agents
 
-**AIがお金を使う前に、あなたのスマホに承認を聞きにくる。AIエージェントのAPI代も1日の予算で止める。日本語・円で使えます。**
+**AIがお金を使う前に、あなたのスマホに承認を聞きにくる。AIエージェントのAPI代も1日の予算で止める。Claude・ChatGPT・Museで使えて、Museならチャットに1通送るだけ。日本語・円対応。**
 **Hard daily caps on your AI agents' API spend, plus phone approval before any other payment.**
 
 👉 https://ut181749ut.github.io/saifuban/
@@ -56,7 +56,7 @@ Saifuban never moves money and never stores card or bank details. It only decide
 ### Setup
 
 1. Open the site, press "はじめる" (Start), pick a budget — you get a personal MCP URL
-2. Add the URL to your AI as a remote MCP server (Streamable HTTP, no auth — the key is in the URL)
+2. Add the URL to your AI as a remote MCP server (Streamable HTTP, no auth — the key is in the URL). With Muse, just send the URL in a chat message and ask it to connect
 3. Ask your AI: "Check my remaining budget with Saifuban"
 
 ## MCP tools

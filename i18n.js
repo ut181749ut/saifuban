@@ -30,7 +30,7 @@
     "プライバシーポリシー": "Privacy Policy",
     "AIがお金を使う前に、あなたに聞きにくる": "Stop your AI agents from overspending",
     "API代の使いすぎ防止にも。": "Hard cap on API bills.",
-    "日本語・円で使えます。メール登録なし・無料。": "Free. No email signup. Works in USD or JPY.",
+    "Claude・ChatGPT・Muse・Cursorで使えます。Museならチャットに1通送るだけでつながります。日本語・円で使えます。メール登録なし・無料。": "Works with Claude, ChatGPT, Muse and Cursor. With Muse, one chat message is all it takes to connect. Free, no email signup, USD or JPY.",
     "OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。": " Store your OpenAI, Anthropic, Google or OpenRouter key in Saifuban. Your agent only gets a proxy key, and requests stop once the daily budget is reached.",
     "AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。": "Set a daily budget and an amount your AI can spend without asking. Anything above that comes to your phone as a notification, and you approve or reject it with one tap.",
     "この端末の合言葉が使えなくなっています": "The passphrase on this device no longer works",
