@@ -18,6 +18,8 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 - 1日の予算・1回の上限・支払先の制限
 - 緊急停止ボタン
 - AIごとに別々のルール
+- APIキーを預ければ、AIエージェントのAPI代も1日の予算で強制停止(AIには代理のキーだけを渡す)
+- 日本語・円で使える。メール登録なし・無料
 
 財布番はお金を動かしません。カード情報や口座は預かりません。
 
@@ -28,6 +30,16 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 3. AIに「財布番で今日の残り予算を見て」と聞いて確認
 
 ## English
+
+**Stop your AI agents from overspending.** Saifuban puts a hard daily cap on your agents' API bills and makes them ask your phone before any other payment.
+
+<img src="api-en.gif" width="420" alt="Demo: an agent loops overnight and Saifuban stops its API calls at the daily budget">
+
+### Hard cap on API bills
+
+Store your OpenAI, Anthropic, Google or OpenRouter key in Saifuban. Your agent only gets a proxy key (`sbk_...`), every call is metered, and requests are refused once the agent's daily budget is reached. Your real key never reaches the agent.
+
+### Phone approval for everything else
 
 <img src="demo-en.gif" width="420" alt="Demo: the AI tries to pay on its own and you reject it from your phone">
 
