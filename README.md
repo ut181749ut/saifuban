@@ -29,6 +29,12 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 
 1. サイトで「はじめる」→ 予算を選ぶ → AI用のURLが出る
 2. そのURLをAIに登録(Claude: コネクタ / ChatGPT: 開発者モードのアプリ / Muse: チャットでURLを送る / Cursor・VS Code: MCP設定)
+
+URLをコピーせずにつなぐこともできます(OAuth)。ClaudeやChatGPTのコネクタに次のURLを登録すると財布番の許可画面が開くので、つなぐAIを選んで「許可する」を押すだけです。
+
+```
+https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp
+```
 3. AIに「財布番で今日の残り予算を見て」と聞いて確認
 
 ## English
@@ -59,6 +65,8 @@ Saifuban never moves money and never stores card or bank details. It only decide
 
 1. Open the site, press "はじめる" (Start), pick a budget — you get a personal MCP URL
 2. Add the URL to your AI as a remote MCP server (Streamable HTTP, no auth — the key is in the URL). With Muse, just send the URL in a chat message and ask it to connect
+
+Or skip the copy-paste and connect with OAuth: add `https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp` as a connector in Claude or ChatGPT. A Saifuban consent page opens; pick (or create) the agent and press Allow. Dynamic Client Registration and PKCE (S256) are supported.
 3. Ask your AI: "Check my remaining budget with Saifuban"
 
 ## MCP tools

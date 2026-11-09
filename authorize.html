@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>AIの財布番 — 接続の許可</title>
+<link rel="icon" href="icon-192.png">
+<style>
+[hidden]{display:none!important}
+:root{--paper:#f7f6f2;--ink:#1f1f1d;--fade:#55544f;--rule:#cfccc3;--card:#fff;--shu:#c4372b;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--paper:#171716;--ink:#ecebe6;--fade:#a9a79f;--rule:#3b3a36;--card:#201f1d;--shu:#e2584a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"BIZ UDGothic","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;font-size:15px;line-height:1.6}
+main{max-width:480px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:20px;margin:0 0 4px;letter-spacing:.04em}
+h2{font-size:17px;margin:20px 0 8px}
+.note{color:var(--fade);font-size:13px}
+.card{background:var(--card);border:1.5px solid var(--ink);padding:16px;margin-top:16px}
+.who{font-size:17px;font-weight:700}
+.host{font-family:ui-monospace,monospace;font-size:13px;word-break:break-all}
+label.opt{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--rule);cursor:pointer}
+label.opt:first-of-type{border-top:0}
+input[type=text]{width:100%;font:inherit;color:var(--ink);background:transparent;border:0;border-bottom:1.5px solid var(--ink);padding:6px 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chips button{padding:4px 10px;font-size:13px}
+.chips button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+button{font:inherit;color:var(--ink);background:transparent;border:1.5px solid var(--ink);border-radius:0;padding:10px 16px;cursor:pointer}
+button.primary{background:var(--ink);color:var(--paper)}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.key{font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;border:1px dashed var(--ink);padding:10px;margin-top:8px}
+.err{color:var(--shu);margin-top:10px}
+.sub{padding-left:28px;margin-top:4px}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="t-title">AIの財布番</h1>
+  <div class="note" id="t-sub">接続の許可</div>
+  <div id="app"><p class="note" id="t-loading">読み込み中…</p></div>
+</main>
+<script>
+(function(){
+const API="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-app";
+const KEY="saifuban.owner";
+let lang="ja";try{lang=localStorage.getItem("saifuban.lang")||(navigator.language||"").slice(0,2)==="ja"?"ja":"en"}catch(_){lang=(navigator.language||"").slice(0,2)==="ja"?"ja":"en"}
+try{const l=localStorage.getItem("saifuban.lang");if(l)lang=l==="en"?"en":"ja"}catch(_){}
+const T={
+ ja:{title:"AIの財布番",sub:"接続の許可",loading:"読み込み中…",
+  asks:n=>`${n} が財布番につなごうとしています`,app:"AIアプリ",back:"許可すると、この宛先に戻ります:",
+  what:"つなぐと、このAIはお金を使う前に財布番へ申請し、あなたの決めた予算の範囲でだけ支払えるようになります。",
+  which:"どのAIとしてつなぎますか？",newAI:"新しいAIとして追加",name:"名前",daily:"1日いくらまで",auto:"聞かずに払っていい額",
+  perDay:"/日",allow:"許可する",deny:"拒否する",
+  first:"財布番をはじめて使う",firstNote:"無料・メール登録なし。合言葉(sbo_…)が1つ発行されます。",
+  have:"合言葉を持っている",haveNote:"財布番のサイトで発行した sbo_ で始まる合言葉を貼ってください。",use:"この合言葉で続ける",
+  keyTitle:"あなたの合言葉",saveKey:"この合言葉は、あとで財布番の画面を開くときに必要です。パスワード管理アプリなどに保存してください。",copy:"コピー",saved:"保存した。続ける",
+  expired:"この接続リクエストは期限切れです。AIアプリの画面から、もう一度つなぎ直してください。",
+  badKey:"合言葉が正しくありません(sbo_ で始まる52文字)。",fail:"うまくいきませんでした。少し待ってからもう一度お試しください。",
+  existing:d=>`1日 ${d}`,going:"AIアプリに戻っています…"},
+ en:{title:"Saifuban",sub:"Allow connection",loading:"Loading…",
+  asks:n=>`${n} wants to connect to Saifuban`,app:"An AI app",back:"If you allow it, you'll be sent back to:",
+  what:"Once connected, this AI asks Saifuban before spending money and can only pay within the budget you set.",
+  which:"Connect it as which AI?",newAI:"Add as a new AI",name:"Name",daily:"Daily budget",auto:"Auto-approve up to",
+  perDay:"/day",allow:"Allow",deny:"Deny",
+  first:"I'm new to Saifuban",firstNote:"Free, no email. You'll get a passphrase (sbo_…).",
+  have:"I have a passphrase",haveNote:"Paste the passphrase starting with sbo_ from the Saifuban site.",use:"Continue with this passphrase",
+  keyTitle:"Your passphrase",saveKey:"You'll need this passphrase to open your Saifuban dashboard later. Save it in a password manager.",copy:"Copy",saved:"Saved it, continue",
+  expired:"This connection request has expired. Start connecting again from your AI app.",
+  badKey:"That passphrase isn't valid (52 characters starting with sbo_).",fail:"Something went wrong. Please try again in a moment.",
+  existing:d=>`${d}/day`,going:"Returning to your AI app…"}}[lang];
+document.documentElement.lang=lang;
+document.title=T.title+" — "+T.sub;
+document.getElementById("t-title").textContent=T.title;
+document.getElementById("t-sub").textContent=T.sub;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const yen=n=>"¥"+Math.round(Number(n)||0).toLocaleString("en-US");
+const req=new URLSearchParams(location.search).get("req")||"";
+let owner=null;try{owner=localStorage.getItem(KEY)}catch(_){}
+let info=null,choice="new",daily=1000,auto=300,newName="",reveal=null;
+async function api(action,args){
+  const r=await fetch(API,{method:"POST",headers:{"content-type":"application/json",...(owner?{"x-owner-key":owner}:{})},body:JSON.stringify({action,...args})});
+  return r.json().catch(()=>({error:"server_error"}));
+}
+const app=$("app");
+function render(errMsg){
+  if(!info){app.innerHTML=`<p class="err">${esc(errMsg||T.fail)}</p>`;return}
+  const who=esc(info.client_name||T.app);
+  let h=`<div class="card"><div class="who">${T.asks(who)}</div>
+    <p class="note">${T.back}<br><span class="host">${esc(info.redirect_host||"")}</span></p>
+    <p class="note">${T.what}</p></div>`;
+  if(reveal){
+    h+=`<div class="card"><b>${T.keyTitle}</b><div class="key" id="k">${esc(reveal)}</div><p class="note">${T.saveKey}</p>
+      <div class="row"><button id="copy">${T.copy}</button><button id="saved" class="primary">${T.saved}</button></div></div>`;
+  }else if(!info.signed_in){
+    h+=`<div class="card"><button id="signup" class="primary">${T.first}</button><p class="note">${T.firstNote}</p>
+      <h2>${T.have}</h2><p class="note">${T.haveNote}</p><input type="text" id="okey" autocomplete="off" spellcheck="false" placeholder="sbo_…">
+      <div class="row"><button id="useKey">${T.use}</button></div></div>
+      <div class="row"><button id="deny">${T.deny}</button></div>`;
+  }else{
+    if(!newName)newName=info.client_name&&info.client_name.length<=40?info.client_name:"AI";
+    const opts=(info.agents||[]).map(a=>`<label class="opt"><input type="radio" name="ag" value="${esc(a.id)}"${choice===a.id?" checked":""}><span><b>${esc(a.name)}</b><br><span class="note">${esc(T.existing(yen(a.daily)))}</span></span></label>`).join("");
+    const chip=(k,v,cur)=>`<button data-chip="${k}:${v}" aria-pressed="${cur===v}">${yen(v)}</button>`;
+    h+=`<div class="card"><h2 style="margin-top:0">${T.which}</h2>${opts}
+      <label class="opt"><input type="radio" name="ag" value="new"${choice==="new"?" checked":""}><span><b>${T.newAI}</b></span></label>
+      <div class="sub"${choice==="new"?"":" hidden"} id="newbox">
+        <div class="note">${T.name}</div><input type="text" id="nname" maxlength="60" value="${esc(newName)}">
+        <div class="note" style="margin-top:10px">${T.daily}</div><div class="chips">${[100,500,1000,3000,10000].map(v=>chip("daily",v,daily)).join("")}</div>
+        <div class="note" style="margin-top:10px">${T.auto}</div><div class="chips">${[0,100,300,1000].map(v=>chip("auto",v,auto)).join("")}</div>
+      </div></div>
+      <div class="row"><button id="allow" class="primary">${T.allow}</button><button id="deny">${T.deny}</button></div>`;
+  }
+  if(errMsg)h+=`<p class="err">${esc(errMsg)}</p>`;
+  app.innerHTML=h;
+}
+async function load(){
+  if(!/^[0-9a-f]{36}$/.test(req)){info=null;return render(T.expired)}
+  const r=await api("oauth_info",{req});
+  if(r.error){info=null;return render(r.error==="request_expired"?T.expired:T.fail)}
+  info=r;
+  if(info.agents&&info.agents.length&&choice==="new"&&!newName){}
+  render();
+}
+async function decide(approve){
+  document.querySelectorAll("button").forEach(b=>b.disabled=true);
+  const args={req,approve};
+  if(approve){if(choice==="new"){args.name=($("nname")?.value||newName).trim()||"AI";args.daily=daily;args.auto=auto}else args.agent_id=choice}
+  const r=await api("oauth_decide",args);
+  if(r.redirect){app.innerHTML=`<p class="note">${T.going}</p>`;location.replace(r.redirect);return}
+  if(r.error==="request_expired"){info=null;return render(T.expired)}
+  render(T.fail);
+}
+app.addEventListener("change",e=>{if(e.target.name==="ag"){choice=e.target.value;const nb=$("newbox");if(nb)nb.hidden=choice!=="new"}});
+app.addEventListener("input",e=>{if(e.target.id==="nname")newName=e.target.value});
+app.addEventListener("click",async e=>{
+  const b=e.target.closest("button");if(!b||b.disabled)return;
+  if(b.dataset.chip){const[k,v]=b.dataset.chip.split(":");if(k==="daily")daily=+v;else auto=+v;return render()}
+  if(b.id==="allow")return decide(true);
+  if(b.id==="deny")return decide(false);
+  if(b.id==="copy"){try{await navigator.clipboard.writeText(reveal);b.textContent="✓"}catch(_){const r=document.createRange();r.selectNodeContents($("k"));const s=getSelection();s.removeAllRanges();s.addRange(r)}return}
+  if(b.id==="saved"){reveal=null;return load()}
+  if(b.id==="signup"){b.disabled=true;const r=await api("signup",{});if(r.owner_key){owner=r.owner_key;try{localStorage.setItem(KEY,owner)}catch(_){}
+      try{fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"track",event:"signup",src:"oauth",lang})})}catch(_){}
+      reveal=owner;return render()}
+    b.disabled=false;return render(T.fail)}
+  if(b.id==="useKey"){const k=($("okey").value||"").trim();if(!/^sbo_[0-9a-f]{48}$/.test(k))return render(T.badKey);
+    owner=k;const r=await api("oauth_info",{req});if(r.error||!r.signed_in){owner=null;return render(r.error==="request_expired"?T.expired:T.badKey)}
+    try{localStorage.setItem(KEY,k)}catch(_){}info=r;return render()}
+});
+load();
+})();
+</script>
+</body>
+</html>

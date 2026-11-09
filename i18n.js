@@ -239,6 +239,8 @@
     [/^「(.+)」をAIにつなぐ$/, (m, n) => `Connect "${n}" to your AI`],
     [/^使った (\S+) \/ (\S+)$/, (m, a, b) => `Spent ${a} of ${b}`],
     [/^今週 (\S+) \/ (\S+)$/, (m, a, b) => `This week ${a} of ${b}`],
+    [/^URLをコピーしない方法もあります:URLの欄に (\S+) だけを入れると、財布番の許可画面が開き、「許可する」を押すだけでつながります。$/,
+      (m, u) => `You can also skip copying: enter just ${u} as the URL. A Saifuban consent page opens, and you press Allow to connect.`],
     [/^今月 (\S+) \/ (\S+)$/, (m, a, b) => `This month ${a} of ${b}`],
     [/^([¥$][\d,.]+)まで$/, (m, a) => `Up to ${a}`],
     [/^金額を円とドルのどちらで表示・設定するかを選べます。ドルは1ドル=([\d.]+)円で換算します\(中身の記録は円のままです\)。$/,

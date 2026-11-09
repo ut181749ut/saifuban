@@ -217,7 +217,7 @@ const LINK=(href,label)=>`<div class="row"><a class="btn primary" href="${href}"
 const GUIDES=[
  {id:"claude",label:"Claude",steps:(step)=>[
   step(2,"Claudeのコネクタ画面を開く",LINK("https://claude.ai/settings/connectors","Claudeのコネクタ画面を開く")+`<div class="note">スマホのClaudeアプリでは追加できません。アプリが開いてしまうときは、SafariやChromeで claude.ai/settings/connectors を開いてください。有料プランが必要です。</div>`),
-  step(3,"「カスタムコネクタを追加」を押して貼る",`<div class="note">名前は「財布番」、URLの欄にコピーしたURLを貼って「追加」。会話の「+」メニューで財布番がオンになっているかも確かめてください。</div>`)]},
+  step(3,"「カスタムコネクタを追加」を押して貼る",`<div class="note">名前は「財布番」、URLの欄にコピーしたURLを貼って「追加」。会話の「+」メニューで財布番がオンになっているかも確かめてください。</div><div class="note">URLをコピーしない方法もあります:URLの欄に ${FN}/saifuban-mcp だけを入れると、財布番の許可画面が開き、「許可する」を押すだけでつながります。</div>`)]},
  {id:"chatgpt",label:"ChatGPT",steps:(step)=>[
   step(2,"ChatGPTの設定を開く",LINK("https://chatgpt.com/#settings/Connectors","ChatGPTの設定を開く")+`<div class="note">ブラウザで開いてください。「アプリとコネクタ」→「詳細設定」で「開発者モード」をオンにします。有料プランが必要です。</div>`),
   step(3,"「作成」からURLを貼る",`<div class="note">名前は「財布番」、URLの欄にコピーしたURLを貼り、認証は「なし」で作成。会話の「+」メニューから財布番を選んで使います。</div>`)]},
