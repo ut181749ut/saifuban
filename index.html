@@ -156,7 +156,6 @@ details.more .inner .full{grid-column:1/-1}
 .welcome p{margin:0}
 .steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
 .keybox{font-family:var(--f-body);font-size:13px;word-break:break-all;border:2px solid var(--ink);background:var(--card);padding:10px;user-select:all}
-img.ico{width:56px;height:56px}
 .seg{display:flex;flex-wrap:wrap;border:1.5px solid var(--ink);align-self:flex-start}
 .segb{border:0;padding:6px 14px;font-size:14px}
 .segb[aria-selected="true"]{background:var(--ink);color:var(--paper)}
@@ -225,8 +224,14 @@ const GUIDES=[
  {id:"muse",label:"Muse",steps:(step,url)=>[
   step(2,"Museのチャットを開く",`<div class="note">スマホのMuseアプリでも大丈夫です。設定画面は使いません。</div>`),
   step(3,"この文をMuseに送る",`<code id="mm" class="urlbox">このMCPサーバーにつないで、ツールを試して、「財布番」というスキルとして保存して。認証はなし。URL: ${url||"(ステップ1のURL)"}</code><div class="row"><button data-copy="mm" data-step="3" class="primary">文をコピー</button></div><div class="note">${url?"":"URLの部分は自分のURLに置き換えてください。"}認証を聞かれたら「なし」と答えます。</div>`)]},
+ {id:"cursor",label:"Cursor・VS Code",steps:(step,url)=>[
+  step(2,"ボタンで追加する",url?`<div class="row"><a class="btn primary" href="cursor://anysphere.cursor-deeplink/mcp/install?name=saifuban&config=${encodeURIComponent(btoa(JSON.stringify({url})))}" data-step="2">Cursorに追加</a><a class="btn primary" href="vscode:mcp/install?${encodeURIComponent(JSON.stringify({name:"saifuban",type:"http",url}))}" data-step="2">VS Codeに追加</a></div><div class="note">パソコンにCursorかVS Codeが入っていると、そのアプリが開きます。</div>`:`<div class="note">ボタンで追加するには、ステップ1でURLを作り直してください。</div>`),
+  step(3,"開いた画面で「Install」を押す",`<div class="note">アプリ側で確認画面が出たら「Install」(インストール)を押します。これで財布番がMCPサーバーとして登録されます。</div>`)]},
+ {id:"claudecode",label:"Claude Code",steps:(step,url)=>[
+  step(2,"このコマンドをターミナルで実行する",`<code id="cc" class="urlbox">claude mcp add --transport http saifuban ${url||"(ステップ1のURL)"}</code><div class="row"><button data-copy="cc" data-step="2" class="primary">コマンドをコピー</button></div>`),
+  step(3,"Claude Codeを開き直す",`<div class="note">Claude Codeを起動し直して、/mcp で財布番が出ていれば登録できています。</div>`)]},
  {id:"other",label:"その他",steps:(step)=>[
-  step(2,"AIの設定でコネクタを探す",`<div class="note">「コネクタ」「MCPサーバー」「ツール」「連携」などの名前の設定にあります。URLでつなぐMCP(リモートMCP)に対応したAIで使えます。Cursor・VS Codeなどは設定ファイルのMCPの欄に書きます。</div>`),
+  step(2,"AIの設定でコネクタを探す",`<div class="note">「コネクタ」「MCPサーバー」「ツール」「連携」などの名前の設定にあります。URLでつなぐMCP(リモートMCP)に対応したAIで使えます。</div>`),
   step(3,"URLを貼って保存する",`<div class="note">名前は「財布番」にしておくと分かりやすいです。認証はなしで大丈夫です。</div>`)]},
 ];
 let OWNER=null, D=null, newKey=null, stampId=null, busy=false, wizOpen=false, ownerReveal=null, pushState="checking", swReg=null;
@@ -298,8 +303,7 @@ function showWelcome(reason){
       <p class="note">人に教えると、その人もあなたの財布番を操作できてしまいます。</p>
       <div class="row"><button id="saved" class="primary big">保存した。はじめる</button></div>`;
     return}
-  w.innerHTML=`<img class="ico" src="icon-192.png" alt="">
-    <h2>AIがお金を使う前に、あなたに聞きにくる</h2>
+  w.innerHTML=`<h2>AIがお金を使う前に、あなたに聞きにくる</h2>
     ${LANG==="en"?`<p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>
     <p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>`:`<p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>
     <p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>`}
@@ -366,12 +370,12 @@ function render(){
   k.disabled=!D; k.classList.toggle("on",kill); k.textContent=kill?"停止を解除":"緊急停止";
   if(!D)return;
   $("agents").innerHTML=D.agents.map(a=>{
-    const left=Math.max(0,a.daily-a.spent-a.reserved),p=a.daily?Math.min(100,(a.spent+a.reserved)/a.daily*100):100;
+    const left=Math.max(0,Math.min(a.daily-a.spent-a.reserved,a.weekly?a.weekly-a.week_used:Infinity,a.monthly?a.monthly-a.month_used:Infinity)),p=a.daily?Math.min(100,(a.spent+a.reserved)/a.daily*100):100;
     const off=kill||!a.active;
     return `<div class="agent"><div class="ahead"><span class="name">${esc(a.name)}</span><span class="state${off?" off":""}">${off?"停止中":"稼働中"}</span></div>
       <div class="left num">${money(left)}<small>あと使える</small></div>
       <div class="gauge" aria-hidden="true"><i class="${p>80?"hot":""}" style="width:${p}%"></i></div>
-      <div class="sub2 num">使った ${money(a.spent)} / ${money(a.daily)}</div>
+      <div class="sub2 num">使った ${money(a.spent)} / ${money(a.daily)}</div>${a.weekly?`<div class="sub2 num">今週 ${money(a.week_used)} / ${money(a.weekly)}</div>`:""}${a.monthly?`<div class="sub2 num">今月 ${money(a.month_used)} / ${money(a.monthly)}</div>`:""}
       <button class="howto" data-howto="${a.id}">つなぎ方</button></div>`}).join("");
   const q=D.requests.filter(r=>r.status==="pending"),stamped=D.requests.find(r=>r.id===stampId);
   const qc=$("qc");qc.textContent=q.length;qc.hidden=!q.length;
@@ -480,9 +484,11 @@ function renderRules(){
     <div class="full row"><button data-save="${a.id}" class="primary">保存</button><button data-howto="${a.id}">つなぎ方を見る</button></div>
     <details class="more"><summary>もっと細かく</summary><div class="inner">
       <label>1回の上限(${CL()})<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.per_tx)}"></label>
+      <label>1週間いくらまで(${CL()}・空欄なら上限なし)<input id="r-${a.id}-weekly" data-f="weekly" type="number" inputmode="decimal" min="0" step="any" value="${a.weekly?toD(a.weekly):""}" placeholder="上限なし"></label>
+      <label>1か月いくらまで(${CL()}・空欄なら上限なし)<input id="r-${a.id}-monthly" data-f="monthly" type="number" inputmode="decimal" min="0" step="any" value="${a.monthly?toD(a.monthly):""}" placeholder="上限なし"></label>
       <label>使ってよい支払先(空欄ならどこでもOK)<input id="r-${a.id}-merchants" data-f="merchants" value="${esc(a.merchants.join(", "))}" placeholder="例: OpenRouter, AWS"></label>
       <div class="full row"><button data-toggle="${a.id}">${a.active?"このAIを止める":"再開する"}</button><button data-rotate="${a.id}">つなぐURLを作り直す</button><button data-del="${a.id}" class="danger">このAIを削除</button><span id="cf-${a.id}" class="note" hidden>もう一度押すと削除します</span></div>
-      <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 定期購入(サブスク)は金額に関係なく確認 → 聞かずに払っていい額。予算は日本時間0時にリセット、24時間放置の申請は失効します。</div>
+      <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 1週間・1か月の予算 → 定期購入(サブスク)は金額に関係なく確認 → 聞かずに払っていい額。予算は日本時間0時(週は月曜、月は1日)にリセット、24時間放置の申請は失効します。</div>
     </div></details>
   </div>`).join("")+`<div><button id="wiz-open" class="primary">+ 別のAIをつなぐ</button></div>`;
 }
@@ -519,7 +525,7 @@ document.addEventListener("click",async e=>{
     const id=b.dataset.toggle||b.dataset.save;if(!UUID.test(id))return;const a=D.agents.find(x=>x.id===id);if(!a)return;
     const card=b.closest(".rule"),g=f=>card.querySelector(`[data-f="${f}"]`).value;
     const active=b.dataset.toggle?!a.active:a.active;
-    return run("update_agent",{id,name:a.name,per_tx:fromD(g("per_tx")),daily:fromD(g("daily")),auto:fromD(g("auto")),merchants:splitM(g("merchants")),active},
+    return run("update_agent",{id,name:a.name,per_tx:fromD(g("per_tx")),daily:fromD(g("daily")),auto:fromD(g("auto")),weekly:g("weekly").trim()===""?null:fromD(g("weekly")),monthly:g("monthly").trim()===""?null:fromD(g("monthly")),merchants:splitM(g("merchants")),active},
       b.dataset.toggle?(active?`${a.name}を再開しました`:`${a.name}を止めました`):`${a.name}のルールを保存しました`);
   }
   if(b.dataset.del){const id=b.dataset.del;if(!UUID.test(id))return;
