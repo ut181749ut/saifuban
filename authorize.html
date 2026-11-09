@@ -32,6 +32,9 @@ button:disabled{opacity:.5;cursor:default}
 .key{font-family:ui-monospace,monospace;font-size:13px;word-break:break-all;border:1px dashed var(--ink);padding:10px;margin-top:8px}
 .err{color:var(--shu);margin-top:10px}
 .sub{padding-left:28px;margin-top:4px}
+.step{margin-top:22px;font-weight:700;font-size:14px;letter-spacing:.02em}
+.step.muted{color:var(--fade)}
+.step+.card{margin-top:8px}
 </style>
 </head>
 <body>
@@ -57,7 +60,7 @@ const T={
   keyTitle:"あなたの合言葉",saveKey:"この合言葉は、あとで財布番の画面を開くときに必要です。パスワード管理アプリなどに保存してください。",copy:"コピー",saved:"保存した。続ける",
   expired:"この接続リクエストは期限切れです。AIアプリの画面から、もう一度つなぎ直してください。",
   badKey:"合言葉が正しくありません(sbo_ で始まる52文字)。",fail:"うまくいきませんでした。少し待ってからもう一度お試しください。",
-  existing:d=>`1日 ${d}`,going:"AIアプリに戻っています…"},
+  existing:d=>`1日 ${d}`,going:"AIアプリに戻っています…",step1:"ステップ1/2 財布番のアカウント",step2:"ステップ2/2 つなぐAIを選んで許可",needFirst:"「許可する」は、上のどちらかを済ませると押せるようになります。"},
  en:{title:"Saifuban",sub:"Allow connection",loading:"Loading…",
   asks:n=>`${n} wants to connect to Saifuban`,app:"An AI app",back:"If you allow it, you'll be sent back to:",
   what:"Once connected, this AI asks Saifuban before spending money and can only pay within the budget you set.",
@@ -68,7 +71,7 @@ const T={
   keyTitle:"Your passphrase",saveKey:"You'll need this passphrase to open your Saifuban dashboard later. Save it in a password manager.",copy:"Copy",saved:"Saved it, continue",
   expired:"This connection request has expired. Start connecting again from your AI app.",
   badKey:"That passphrase isn't valid (52 characters starting with sbo_).",fail:"Something went wrong. Please try again in a moment.",
-  existing:d=>`${d}/day`,going:"Returning to your AI app…"}}[lang];
+  existing:d=>`${d}/day`,going:"Returning to your AI app…",step1:"Step 1 of 2: your Saifuban account",step2:"Step 2 of 2: pick the AI and allow",needFirst:"Allow becomes available after you finish one of the options above."}}[lang];
 document.documentElement.lang=lang;
 document.title=T.title+" — "+T.sub;
 document.getElementById("t-title").textContent=T.title;
@@ -94,15 +97,17 @@ function render(errMsg){
     h+=`<div class="card"><b>${T.keyTitle}</b><div class="key" id="k">${esc(reveal)}</div><p class="note">${T.saveKey}</p>
       <div class="row"><button id="copy">${T.copy}</button><button id="saved" class="primary">${T.saved}</button></div></div>`;
   }else if(!info.signed_in){
-    h+=`<div class="card"><button id="signup" class="primary">${T.first}</button><p class="note">${T.firstNote}</p>
+    h+=`<div class="step">${T.step1}</div><div class="card"><button id="signup" class="primary">${T.first}</button><p class="note">${T.firstNote}</p>
       <h2>${T.have}</h2><p class="note">${T.haveNote}</p><input type="text" id="okey" autocomplete="off" spellcheck="false" placeholder="sbo_…">
       <div class="row"><button id="useKey">${T.use}</button></div></div>
-      <div class="row"><button id="deny">${T.deny}</button></div>`;
+      <div class="step muted">${T.step2}</div>
+      <div class="row"><button class="primary" disabled>${T.allow}</button><button id="deny">${T.deny}</button></div>
+      <p class="note">${T.needFirst}</p>`;
   }else{
     if(!newName)newName=info.client_name&&info.client_name.length<=40?info.client_name:"AI";
     const opts=(info.agents||[]).map(a=>`<label class="opt"><input type="radio" name="ag" value="${esc(a.id)}"${choice===a.id?" checked":""}><span><b>${esc(a.name)}</b><br><span class="note">${esc(T.existing(yen(a.daily)))}</span></span></label>`).join("");
     const chip=(k,v,cur)=>`<button data-chip="${k}:${v}" aria-pressed="${cur===v}">${yen(v)}</button>`;
-    h+=`<div class="card"><h2 style="margin-top:0">${T.which}</h2>${opts}
+    h+=`<div class="step">${T.step2}</div><div class="card"><h2 style="margin-top:0">${T.which}</h2>${opts}
       <label class="opt"><input type="radio" name="ag" value="new"${choice==="new"?" checked":""}><span><b>${T.newAI}</b></span></label>
       <div class="sub"${choice==="new"?"":" hidden"} id="newbox">
         <div class="note">${T.name}</div><input type="text" id="nname" maxlength="60" value="${esc(newName)}">
