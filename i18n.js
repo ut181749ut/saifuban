@@ -174,7 +174,7 @@
     "つなぐURLを作り直す": "Make a new connection URL",
     "このAIを削除": "Delete this AI",
     "もう一度押すと削除します": "Tap again to delete",
-    "判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 聞かずに払っていい額。予算は日本時間0時にリセット、24時間放置の申請は失効します。": "Checked in this order: emergency stop → AI stopped → merchant → per-payment limit → daily budget → auto-approve amount. Budgets reset at midnight Japan time (UTC+9), and requests left for 24 hours expire.",
+    "判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 定期購入(サブスク)は金額に関係なく確認 → 聞かずに払っていい額。予算は日本時間0時にリセット、24時間放置の申請は失効します。": "Checked in this order: emergency stop → AI stopped → merchant → per-payment limit → daily budget → subscriptions always need your approval → auto-approve amount. Budgets reset at midnight Japan time (UTC+9), and requests left for 24 hours expire.",
     // toasts / messages
     "先にホーム画面に追加してください": "Add it to your Home Screen first",
     "通知が許可されませんでした": "Notifications weren't allowed",
@@ -243,6 +243,8 @@
     [/聞かずに払っていい額\((.+?)\)を超過/g, (m, n) => `Over auto-approve amount (${A(n)})`],
     [/1回の上限\((.+?)\)を超過/g, (m, n) => `Over per-payment limit (${A(n)})`],
     [/1日の予算\((.+?)\)を超過/g, (m, n) => `Over daily budget (${A(n)})`],
+    [/定期購入のため確認が必要\(年(.+?)\)/g, (m, n) => `Subscription, needs your approval (${A(n)}/yr)`],
+    [/定期購入の可能性があるため確認が必要/g, () => "Possible subscription, needs your approval"],
     [/API利用\(中継で自動計測・([^)]*)\)/g, (m, n) => `API usage (metered via relay · ${n})`],
     [/入力([\d,]+) \/ 出力([\d,]+) トークン/g, (m, a, b) => `${a} in / ${b} out tokens`],
     [/すべて\(予算と承認ルールの範囲内\)/g, () => "anything (within budget and rules)"],

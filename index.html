@@ -482,7 +482,7 @@ function renderRules(){
       <label>1回の上限(${CL()})<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.per_tx)}"></label>
       <label>使ってよい支払先(空欄ならどこでもOK)<input id="r-${a.id}-merchants" data-f="merchants" value="${esc(a.merchants.join(", "))}" placeholder="例: OpenRouter, AWS"></label>
       <div class="full row"><button data-toggle="${a.id}">${a.active?"このAIを止める":"再開する"}</button><button data-rotate="${a.id}">つなぐURLを作り直す</button><button data-del="${a.id}" class="danger">このAIを削除</button><span id="cf-${a.id}" class="note" hidden>もう一度押すと削除します</span></div>
-      <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 聞かずに払っていい額。予算は日本時間0時にリセット、24時間放置の申請は失効します。</div>
+      <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 定期購入(サブスク)は金額に関係なく確認 → 聞かずに払っていい額。予算は日本時間0時にリセット、24時間放置の申請は失効します。</div>
     </div></details>
   </div>`).join("")+`<div><button id="wiz-open" class="primary">+ 別のAIをつなぐ</button></div>`;
 }
