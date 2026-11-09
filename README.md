@@ -65,7 +65,7 @@ Saifuban never moves money and never stores card or bank details. It only decide
 
 | Tool | What it does |
 |---|---|
-| `request_payment` | Ask whether a payment (`merchant`, `amount`, `currency` JPY/USD, `reason`, `recurring` none/week/month/year) is allowed. Waits up to 45 s for phone approval. Returns a single-use `payment_token` when approved. Subscriptions always need your approval, whatever the amount, and the notification shows the yearly cost. |
+| `request_payment` | Ask whether a payment (`merchant`, `amount`, `currency` JPY/USD, `reason`, `recurring` none/week/month/year) is allowed. Waits up to 45 s for phone approval. Returns a single-use `payment_token` when approved. Subscriptions always need your approval, whatever the amount, and the notification shows the yearly cost. Retrying a request that is still pending returns the same request instead of creating a new one (or pass `idempotency_key`). |
 | `check_payment_status` | Check whether a pending request was approved. |
 | `list_payments` | The agent's own past requests (filter by merchant / days), so it can check e.g. whether a Spotify charge was already approved this month and avoid paying twice. |
 | `get_budget` | Remaining budget today, per-transaction limit, auto-approve threshold, allowed merchants. |
