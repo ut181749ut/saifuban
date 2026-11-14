@@ -16,6 +16,7 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 - 少額(例: 300円以下)は自動で許可
 - それを超えるとスマホに通知 → 承認 / 却下をワンタップ
 - 1日・1週間・1か月の予算、1回の上限、支払先の制限
+- 「聞かずに払う」のを、前に払ったことがある支払先だけにする設定(初めての支払先はスマホで確認)
 - 緊急停止ボタン
 - AIごとに別々のルール
 - サブスク(定期購入)は金額に関係なく必ずスマホで確認。通知に年額を表示。AIが申告し忘れても、理由や支払先の文言から定期購入らしいものを見つけて確認に回す
@@ -56,6 +57,7 @@ Your AI agent asks Saifuban before every payment. Saifuban answers using your ru
 - Auto-approve small amounts (e.g. under ¥300)
 - Anything above goes to your phone as a push notification — approve or reject in one tap
 - Daily, weekly and monthly budgets, per-transaction limit, allowed merchants
+- Optional: auto-approve only merchants you've paid before; new merchants always go to your phone
 - Kill switch
 - Separate rules per agent
 

@@ -126,6 +126,8 @@ code,.urlbox{font-family:var(--f-body);font-size:12px;word-break:break-all;white
 .rule + .rule{border-top:1px solid var(--rule);padding-top:12px}
 .rule .head{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .rule .full{grid-column:1/-1}
+label.chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:14px}
+label.chk input{width:auto;margin:0}
 details.more{grid-column:1/-1}
 details.more summary{cursor:pointer;color:var(--ink);font-size:14px;padding:4px 0}
 details.more .inner{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;padding-top:6px}
@@ -481,6 +483,7 @@ function renderRules(){
     <div class="head"><b>${esc(a.name)}</b><span class="note">${a.active?"稼働中":"停止中"}</span></div>
     <label>1日いくらまで(${CL()})<input id="r-${a.id}-daily" data-f="daily" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.daily)}"></label>
     <label>聞かずに払っていい額(${CL()})<input id="r-${a.id}-auto" data-f="auto" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.auto)}"></label>
+    <label class="full chk"><input type="checkbox" data-f="known_only"${a.known_only?" checked":""}>聞かずに払うのは、前に払ったことがある支払先だけ(初めての支払先はスマホで確認)</label>
     <div class="full row"><button data-save="${a.id}" class="primary">保存</button><button data-howto="${a.id}">つなぎ方を見る</button></div>
     <details class="more"><summary>もっと細かく</summary><div class="inner">
       <label>1回の上限(${CL()})<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.per_tx)}"></label>
@@ -488,7 +491,7 @@ function renderRules(){
       <label>1か月いくらまで(${CL()}・空欄なら上限なし)<input id="r-${a.id}-monthly" data-f="monthly" type="number" inputmode="decimal" min="0" step="any" value="${a.monthly?toD(a.monthly):""}" placeholder="上限なし"></label>
       <label>使ってよい支払先(空欄ならどこでもOK)<input id="r-${a.id}-merchants" data-f="merchants" value="${esc(a.merchants.join(", "))}" placeholder="例: OpenRouter, AWS"></label>
       <div class="full row"><button data-toggle="${a.id}">${a.active?"このAIを止める":"再開する"}</button><button data-rotate="${a.id}">つなぐURLを作り直す</button><button data-del="${a.id}" class="danger">このAIを削除</button><span id="cf-${a.id}" class="note" hidden>もう一度押すと削除します</span></div>
-      <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 1週間・1か月の予算 → 定期購入(サブスク)は金額に関係なく確認 → 聞かずに払っていい額。予算は日本時間0時(週は月曜、月は1日)にリセット、24時間放置の申請は失効します。</div>
+      <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 1週間・1か月の予算 → 定期購入(サブスク)は金額に関係なく確認 → (設定していれば)初めての支払先は確認 → 聞かずに払っていい額。予算は日本時間0時(週は月曜、月は1日)にリセット、24時間放置の申請は失効します。</div>
     </div></details>
   </div>`).join("")+`<div><button id="wiz-open" class="primary">+ 別のAIをつなぐ</button></div>`;
 }
@@ -523,9 +526,9 @@ document.addEventListener("click",async e=>{
   if(b.id==="kill"&&D)return run("set_kill",{kill:!D.kill},D.kill?"停止を解除しました":"全AIを停止しました");
   if(b.dataset.toggle||b.dataset.save){
     const id=b.dataset.toggle||b.dataset.save;if(!UUID.test(id))return;const a=D.agents.find(x=>x.id===id);if(!a)return;
-    const card=b.closest(".rule"),g=f=>card.querySelector(`[data-f="${f}"]`).value;
+    const card=b.closest(".rule"),g=f=>card.querySelector(`[data-f="${f}"]`).value,known_only=!!card.querySelector('[data-f="known_only"]')?.checked;
     const active=b.dataset.toggle?!a.active:a.active;
-    return run("update_agent",{id,name:a.name,per_tx:fromD(g("per_tx")),daily:fromD(g("daily")),auto:fromD(g("auto")),weekly:g("weekly").trim()===""?null:fromD(g("weekly")),monthly:g("monthly").trim()===""?null:fromD(g("monthly")),merchants:splitM(g("merchants")),active},
+    return run("update_agent",{id,name:a.name,per_tx:fromD(g("per_tx")),daily:fromD(g("daily")),auto:fromD(g("auto")),weekly:g("weekly").trim()===""?null:fromD(g("weekly")),monthly:g("monthly").trim()===""?null:fromD(g("monthly")),known_only,merchants:splitM(g("merchants")),active},
       b.dataset.toggle?(active?`${a.name}を再開しました`:`${a.name}を止めました`):`${a.name}のルールを保存しました`);
   }
   if(b.dataset.del){const id=b.dataset.del;if(!UUID.test(id))return;
