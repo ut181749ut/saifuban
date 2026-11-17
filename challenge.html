@@ -94,6 +94,17 @@ async function load(){
   }catch(_){ $("status").textContent="Couldn't load the live numbers right now."; }
 }
 load();setInterval(load,15000);
+// 訪問の記録(個人を特定しない日別の件数だけ。同じタブで1回)
+try{
+  if(!sessionStorage.getItem("sb_ch_v")){
+    sessionStorage.setItem("sb_ch_v","1");
+    const qs=new URLSearchParams(location.search);
+    let src=qs.get("src")||qs.get("utm_source")||"";
+    if(!src&&document.referrer){try{const h=new URL(document.referrer).hostname.replace(/^www\./,"");if(h!==location.hostname)src=h}catch(_){}}
+    fetch("https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-app",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({action:"track",event:"visit",src:("ch-"+(src||"direct")).slice(0,60),lang:(navigator.language||"").slice(0,2)})}).catch(()=>{});
+  }
+}catch(_){}
 })();
 </script>
 </body>
