@@ -32,6 +32,7 @@ p,li{margin:6px 0}ul,ol{padding-left:1.4em}.fade{color:var(--fade);font-size:14p
 <li><b>支払いの申請</b>: AIが送ってきたお店の名前、金額、理由、判断の結果、日時。</li>
 <li><b>通知の宛先</b>: スマホ通知を受け取るためにブラウザが発行する宛先情報。ntfyを使う場合はそのトピック名。</li>
 <li><b>言語の設定</b>: 日本語と英語のどちらで使っているか(通知の言語を合わせるため)。</li>
+<li><b>パスキー</b>(登録した場合のみ): 本人確認に使う公開鍵と、その識別子・使った日時。顔や指紋の情報は端末から出ないため、受け取りません。パスキーでログインした端末には、その端末用の合言葉を発行し、元に戻せない形で保存します。</li>
 <li><b>預けたAPIキー</b>(この機能を使う場合のみ): 暗号化した保管庫に保存し、画面には末尾の数文字だけを表示します。</li>
 <li><b>AIの利用量</b>(APIキーを預けた場合のみ): AIの提供元が返す使用量と、そこから計算した金額。会話や指示の中身は保存しません。</li>
 <li><b>サイトの訪問数</b>: 日ごとの訪問・登録の件数と、どのサイトから来たか(リンク元のドメイン名だけ)、表示言語。Cookieは使わず、IPアドレスや個人を特定できる情報は保存しません。</li>
@@ -84,6 +85,7 @@ p,li{margin:6px 0}ul,ol{padding-left:1.4em}.fade{color:var(--fade);font-size:14p
 <li><b>Payment requests</b>: the merchant name, amount and reason your AI sends, the decision, and timestamps.</li>
 <li><b>Notification details</b>: the delivery address your browser issues for push notifications, and your ntfy topic name if you use ntfy.</li>
 <li><b>Language setting</b>: whether you use the Service in Japanese or English, so notifications match.</li>
+<li><b>Passkeys</b> (only if you add one): the public key used to verify you, its identifier and when it was last used. Face and fingerprint data never leave your device, so we never receive them. A device that signs in with a passkey gets its own passphrase, stored only as a hash.</li>
 <li><b>Stored API keys</b> (only if you use this feature): kept in an encrypted vault; only the last few characters are shown on screen.</li>
 <li><b>AI usage</b> (only if you store an API key): the usage reported by the AI provider and the cost calculated from it. The content of conversations and prompts is not stored.</li>
 <li><b>Site visits</b>: daily counts of visits and sign-ups, the referring site (domain name only), and display language. No cookies are used, and no IP addresses or personally identifying information are stored.</li>
