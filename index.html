@@ -489,6 +489,7 @@ function renderRules(){
       <label>1回の上限(${CL()})<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.per_tx)}"></label>
       <label>1週間いくらまで(${CL()}・空欄なら上限なし)<input id="r-${a.id}-weekly" data-f="weekly" type="number" inputmode="decimal" min="0" step="any" value="${a.weekly?toD(a.weekly):""}" placeholder="上限なし"></label>
       <label>1か月いくらまで(${CL()}・空欄なら上限なし)<input id="r-${a.id}-monthly" data-f="monthly" type="number" inputmode="decimal" min="0" step="any" value="${a.monthly?toD(a.monthly):""}" placeholder="上限なし"></label>
+      <label>API代の中継で同時に流せる数(1〜50)<input id="r-${a.id}-max_concurrent" data-f="max_concurrent" type="number" inputmode="numeric" min="1" max="50" step="1" value="${a.max_concurrent||4}"></label>
       <label>使ってよい支払先(空欄ならどこでもOK)<input id="r-${a.id}-merchants" data-f="merchants" value="${esc(a.merchants.join(", "))}" placeholder="例: OpenRouter, AWS"></label>
       <div class="full row"><button data-toggle="${a.id}">${a.active?"このAIを止める":"再開する"}</button><button data-rotate="${a.id}">つなぐURLを作り直す</button><button data-del="${a.id}" class="danger">このAIを削除</button><span id="cf-${a.id}" class="note" hidden>もう一度押すと削除します</span></div>
       <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 1週間・1か月の予算 → 定期購入(サブスク)は金額に関係なく確認 → (設定していれば)初めての支払先は確認 → 聞かずに払っていい額。予算は日本時間0時(週は月曜、月は1日)にリセット、24時間放置の申請は失効します。</div>
@@ -528,7 +529,7 @@ document.addEventListener("click",async e=>{
     const id=b.dataset.toggle||b.dataset.save;if(!UUID.test(id))return;const a=D.agents.find(x=>x.id===id);if(!a)return;
     const card=b.closest(".rule"),g=f=>card.querySelector(`[data-f="${f}"]`).value,known_only=!!card.querySelector('[data-f="known_only"]')?.checked;
     const active=b.dataset.toggle?!a.active:a.active;
-    return run("update_agent",{id,name:a.name,per_tx:fromD(g("per_tx")),daily:fromD(g("daily")),auto:fromD(g("auto")),weekly:g("weekly").trim()===""?null:fromD(g("weekly")),monthly:g("monthly").trim()===""?null:fromD(g("monthly")),known_only,merchants:splitM(g("merchants")),active},
+    return run("update_agent",{id,name:a.name,per_tx:fromD(g("per_tx")),daily:fromD(g("daily")),auto:fromD(g("auto")),weekly:g("weekly").trim()===""?null:fromD(g("weekly")),monthly:g("monthly").trim()===""?null:fromD(g("monthly")),known_only,max_concurrent:Math.max(1,Math.min(50,Math.round(+g("max_concurrent")||4))),merchants:splitM(g("merchants")),active},
       b.dataset.toggle?(active?`${a.name}を再開しました`:`${a.name}を止めました`):`${a.name}のルールを保存しました`);
   }
   if(b.dataset.del){const id=b.dataset.del;if(!UUID.test(id))return;

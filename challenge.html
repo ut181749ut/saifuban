@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Break the cap — Saifuban challenge</title>
+<meta name="description" content="A live AI agent key with a ¥100/day budget. Make Saifuban approve more than that and you win.">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--paper:#f7f6f2;--ink:#1f1f1d;--fade:#55544f;--rule:#cfccc3;--card:#fff;--shu:#c4372b;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--paper:#171716;--ink:#ecebe6;--fade:#a9a79f;--rule:#3b3a36;--card:#201f1d;--shu:#e2584a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"BIZ UDGothic","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;font-size:15px;line-height:1.65}
+main{max-width:680px;margin:0 auto;padding:28px 16px 56px}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:.02em}
+h2{font-size:17px;margin:28px 0 8px;border-top:1px solid var(--rule);padding-top:18px}
+.lead{color:var(--fade);margin:0 0 18px}
+.card{background:var(--card);border:1.5px solid var(--ink);padding:16px;margin-top:14px}
+.big{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums}
+.meter{height:10px;background:var(--rule);margin-top:8px}
+.meter i{display:block;height:100%;background:var(--ink)}
+.note{color:var(--fade);font-size:13px}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+pre{background:var(--card);border:1px solid var(--rule);padding:12px;overflow-x:auto;white-space:pre}
+.key{white-space:pre-wrap;word-break:break-all}
+.win{color:var(--shu);font-weight:700}
+a{color:inherit}
+ul{padding-left:20px}
+.ja{margin-top:36px;border-top:1.5px solid var(--ink);padding-top:16px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Break the cap</h1>
+  <p class="lead">A live Saifuban agent with a ¥100/day budget. Make Saifuban approve more than ¥100 in a single day and you win.</p>
+
+  <div class="card">
+    <div class="note">Approved today (Japan time)</div>
+    <div><span class="big" id="spent">–</span> <span class="note">of ¥100</span></div>
+    <div class="meter"><i id="bar" style="width:0%"></i></div>
+    <p class="note" id="status">Loading…</p>
+  </div>
+
+  <h2>The rules</h2>
+  <ul>
+    <li>Daily budget: ¥100. Per payment: up to ¥100. Anything up to ¥100 is auto-approved, so there's no human in the loop to stop you.</li>
+    <li>You win if the total <b>approved</b> amount for one day goes over ¥100.</li>
+    <li>Anything that goes through the public API or MCP endpoint counts: parallel requests, retries, odd currencies, strange merchant names, idempotency tricks.</li>
+    <li>No real money moves. Please don't flood the server; a few hundred requests is plenty to test a race.</li>
+    <li>If you win, open an issue at <a href="https://github.com/ut181749ut/saifuban/issues">GitHub</a> with how you did it. You'll be credited in the README.</li>
+  </ul>
+
+  <h2>The key</h2>
+  <pre class="key" id="k">sbk_77d36193dc13dcdf394db447586bb8498371814eed72364c</pre>
+
+  <h2>REST</h2>
+<pre>curl -X POST https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban/request \
+  -H "Authorization: Bearer sbk_77d36193dc13dcdf394db447586bb8498371814eed72364c" \
+  -H "Content-Type: application/json" \
+  -d '{"merchant":"Test shop","amount":60,"currency":"JPY","reason":"challenge"}'</pre>
+  <p class="note"><code>currency</code> can be <code>JPY</code> or <code>USD</code>. <code>GET …/saifuban/budget</code> shows what's left.</p>
+
+  <h2>MCP</h2>
+  <pre class="key">https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp/sbk_77d36193dc13dcdf394db447586bb8498371814eed72364c</pre>
+  <p class="note">Add it to Claude, ChatGPT or any MCP client and ask your AI to try. Agents are welcome to compete.</p>
+
+  <h2>Why</h2>
+  <p>Saifuban is a spending guard for AI agents: hard daily, weekly and monthly caps on API bills, and phone approval before any other payment. A cap is only worth something if it holds under a looping, parallel, retrying agent. This is the test. <a href="./?src=challenge">Try Saifuban</a> · <a href="https://github.com/ut181749ut/saifuban">Source and docs</a></p>
+
+  <div class="ja" lang="ja">
+    <h2 style="border:0;padding:0;margin-top:0">日本語</h2>
+    <p>1日の予算が100円の、本物の財布番のAIを公開しています。1日のうちに100円を超える額を財布番に許可させられたら勝ちです。</p>
+    <ul>
+      <li>1回100円まで、100円以下は自動で許可されます(人間は止めません)。</li>
+      <li>同時に大量に送る、やり直す、通貨を変える、変な支払先名を使うなど、公開されているAPIかMCPを通す方法なら何でもありです。</li>
+      <li>本物のお金は動きません。サーバーに負荷をかけすぎないでください。</li>
+      <li>勝てたら、やり方を<a href="https://github.com/ut181749ut/saifuban/issues">GitHub</a>に書いてください。READMEに名前を載せます。</li>
+    </ul>
+  </div>
+</main>
+<script>
+(function(){
+const URL_="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp/"+document.getElementById("k").textContent.trim();
+const $=id=>document.getElementById(id);
+async function load(){
+  try{
+    const r=await fetch(URL_,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"get_budget",arguments:{}}})});
+    const j=await r.json();const b=j.result&&j.result.structuredContent;
+    if(!b||b.error)throw 0;
+    const spent=Math.round(b.spent_today_jpy||0),budget=b.daily_budget_jpy||100;
+    $("spent").textContent="¥"+spent.toLocaleString("en-US");
+    $("bar").style.width=Math.min(100,spent/budget*100)+"%";
+    $("status").innerHTML=spent>budget?'<span class="win">Someone broke it. Tell us how on GitHub.</span>':`¥${Math.max(0,budget-spent)} left today · resets at midnight Japan time · updated ${new Date().toLocaleTimeString()}`;
+  }catch(_){ $("status").textContent="Couldn't load the live numbers right now."; }
+}
+load();setInterval(load,15000);
+})();
+</script>
+</body>
+</html>

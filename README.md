@@ -22,6 +22,7 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 - サブスク(定期購入)は金額に関係なく必ずスマホで確認。通知に年額を表示。AIが申告し忘れても、理由や支払先の文言から定期購入らしいものを見つけて確認に回す
 - AIが自分の過去の申請を調べられる(同じ支払いを二重にしないため)
 - APIキーを預ければ、AIエージェントのAPI代も1日・週・月の予算で強制停止(AIには代理のキーだけを渡す)
+- LangChain・CrewAI・OpenAI Agents SDK・Vercel AI SDK・Claude Codeでは、接続先と鍵を差し替えるだけ(コード例は英語版の「Use it from your agent framework」)
 - 日本語・円で使える。メール登録なし・無料
 
 財布番はお金を動かしません。カード情報や口座は預かりません。
@@ -47,6 +48,54 @@ https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp
 ### Hard cap on API bills
 
 Store your OpenAI, Anthropic, Google or OpenRouter key in Saifuban. Your agent only gets a proxy key (`sbk_...`), every call is metered, and requests are refused once the agent's daily (or optional weekly/monthly) budget is reached. Your real key never reaches the agent.
+
+Each agent can also have at most a few API requests in flight at once (4 by default, adjustable). Extra requests get a `429` and the official SDKs retry them automatically, so a runaway loop can't fire hundreds of calls before the budget check catches up.
+
+### Use it from your agent framework
+
+Point the client at the Saifuban proxy and give it the agent's proxy key. Nothing else changes.
+
+**Claude Code**
+```bash
+export ANTHROPIC_BASE_URL="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/anthropic"
+export ANTHROPIC_API_KEY="sbk_..."
+```
+
+**OpenAI SDK / OpenAI Agents SDK (Python)**
+```python
+from openai import AsyncOpenAI
+from agents import set_default_openai_client
+
+set_default_openai_client(AsyncOpenAI(
+    base_url="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openai/v1",
+    api_key="sbk_...",
+))
+```
+
+**LangChain**
+```python
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+
+gpt = ChatOpenAI(model="gpt-4o-mini", base_url="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openai/v1", api_key="sbk_...")
+claude = ChatAnthropic(model="claude-sonnet-4-5", base_url="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/anthropic", api_key="sbk_...")
+```
+
+**CrewAI**
+```python
+from crewai import LLM
+
+llm = LLM(model="openai/gpt-4o-mini", base_url="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openai/v1", api_key="sbk_...")
+```
+
+**Vercel AI SDK**
+```ts
+import { createOpenAI } from "@ai-sdk/openai";
+
+const openai = createOpenAI({ baseURL: "https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openai/v1", apiKey: "sbk_..." });
+```
+
+**OpenRouter** (hundreds of models, actual cost reported per call): base URL `https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openrouter/v1`. **Gemini**: `https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/google/v1beta/openai` (OpenAI-compatible).
 
 ### Phone approval for everything else
 
@@ -102,6 +151,10 @@ curl -X POST https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban/rede
 `/verify` takes the same body and checks without consuming. No agent key is needed to redeem, so the payment side doesn't have to share secrets with the agent.
 
 API spend is already hard-enforced: when you store your provider API key in Saifuban, the agent only ever gets a proxy key.
+
+## Challenge
+
+Think you can make Saifuban approve more than the budget? A live agent with a ¥100/day budget is open to everyone: https://ut181749ut.github.io/saifuban/challenge.html
 
 ## Links
 
