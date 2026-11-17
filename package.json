@@ -1,0 +1,11 @@
+{
+  "name": "saifuban",
+  "version": "0.1.0",
+  "description": "Saifuban setup in one command: a hard daily cap on your AI agent's API bill",
+  "bin": { "saifuban": "cli/saifuban.mjs" },
+  "files": ["cli/"],
+  "engines": { "node": ">=18" },
+  "homepage": "https://ut181749ut.github.io/saifuban/",
+  "repository": "github:ut181749ut/saifuban",
+  "private": true
+}

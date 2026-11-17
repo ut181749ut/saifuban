@@ -29,6 +29,8 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 
 ### 使い方
 
+ターミナルからなら1行で始められます(登録・AI作成・APIキー預けまで): `npx github:ut181749ut/saifuban`
+
 1. サイトで「はじめる」→ 予算を選ぶ → AI用のURLが出る
 2. そのURLをAIに登録(Claude: コネクタ / ChatGPT: 開発者モードのアプリ / Muse: チャットでURLを送る / Cursor・VS Code: MCP設定)
 
@@ -54,6 +56,13 @@ Before each call, the proxy reserves the most it could cost (input size + `max_t
 Each agent can also have at most a few API requests in flight at once (4 by default, adjustable). Extra requests get a `429` and the official SDKs retry them automatically, so a runaway loop can't fire hundreds of calls before the budget check catches up.
 
 ### Use it from your agent framework
+
+Or set everything up from the terminal in one command (account, agent with a daily budget, API key):
+
+```bash
+npx github:ut181749ut/saifuban
+```
+
 
 Point the client at the Saifuban proxy and give it the agent's proxy key. Nothing else changes.
 

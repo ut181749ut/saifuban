@@ -390,6 +390,7 @@ function showWelcome(reason){
     <code class="urlbox">export ANTHROPIC_BASE_URL="${FN}/saifuban-proxy/anthropic"
 export ANTHROPIC_API_KEY="sbk_…"</code>
     <ol class="note steps"><li>はじめる(メール登録なし・無料)</li><li>AIを1つ作って、エージェントキー(sbk_…)を受け取る</li><li>「設定」でAPIキーを預けて、上の2行を設定する</li></ol>
+    <p class="note">ターミナルなら1行で、登録・AI作成・キー預けまで:</p><code id="npx" class="urlbox">npx github:ut181749ut/saifuban</code><div class="row"><button data-copy="npx">コマンドをコピー</button></div>
     ${invalid}
     ${iosTip}<div class="row"><button id="signup" class="primary big">はじめる(無料)</button><a class="btn" style="color:inherit;text-decoration:none" href="challenge.html?src=site">上限を破れるか試す</a></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div>${hasPasskey()?`<div class="row"><button id="pk-login">パスキーでログイン</button><span class="note">すでに使っていて、パスキーを登録した人</span></div>`:""}</div>
     <div class="wmedia">${LANG==="en"?`<video class="demo" src="api-en.mp4" autoplay muted loop playsinline preload="metadata"></video>`:`<img class="demo" src="api-ja.gif" alt="AIがループしても、1日の予算でAPIの呼び出しが止まる様子">`}</div>
@@ -651,7 +652,7 @@ document.addEventListener("click",async e=>{
   if(b.dataset.tab)return setTab(b.dataset.tab);
   if(b.dataset.guide){guideAI=b.dataset.guide;return renderTop()}
   if(b.dataset.apip){if(API_SETUP.some(x=>x.p===b.dataset.apip))apiP=b.dataset.apip;return renderTop()}
-  if(b.dataset.copy){if(/^(nu|env|cc|mm|nk|base-)/.test(b.dataset.copy))trackOnce("copy_setup");if(b.dataset.step){guideDone[b.dataset.step]=true;setTimeout(renderTop,50)}const t=$(b.dataset.copy).textContent;
+  if(b.dataset.copy){if(/^(nu|env|cc|mm|nk|npx|base-)/.test(b.dataset.copy))trackOnce("copy_setup");if(b.dataset.step){guideDone[b.dataset.step]=true;setTimeout(renderTop,50)}const t=$(b.dataset.copy).textContent;
     try{await navigator.clipboard.writeText(t);toast("コピーしました")}catch(_){const r=document.createRange();r.selectNodeContents($(b.dataset.copy));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("選択しました。長押しでコピーしてください")}return}
   if(b.id==="langbtn"){const nl=LANG==="en"?"ja":"en";try{localStorage.setItem("saifuban.lang",nl);localStorage.removeItem("saifuban.lang_synced")}catch(_){}
     if(OWNER)await api("set_lang",{lang:nl});try{if(OWNER)localStorage.setItem("saifuban.lang_synced",nl)}catch(_){}

@@ -243,6 +243,7 @@
     "アプリ側で確認画面が出たら「Install」(インストール)を押します。これで財布番がMCPサーバーとして登録されます。": "When the app asks, press Install. Saifuban is then added as an MCP server.",
     "このコマンドをターミナルで実行する": "Run this command in your terminal",
     "コマンドをコピー": "Copy command",
+    "ターミナルなら1行で、登録・AI作成・キー預けまで:": "Or from the terminal, in one line: account, agent and API key:",
     "Claude Codeを開き直す": "Restart Claude Code",
     "Claude Codeを起動し直して、/mcp で財布番が出ていれば登録できています。": "Restart Claude Code. If Saifuban shows up in /mcp, it's connected.",
     "「コネクタ」「MCPサーバー」「ツール」「連携」などの名前の設定にあります。URLでつなぐMCP(リモートMCP)に対応したAIで使えます。": "Look for a setting called connectors, MCP servers, tools or integrations. Works with any AI that supports remote MCP over a URL.",
