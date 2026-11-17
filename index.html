@@ -145,6 +145,9 @@ details.more .inner .full{grid-column:1/-1}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
 .nudge{border:1.5px solid var(--ink);background:var(--card);padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px}
 .nudge .note{font-size:12px}
+.nudge.help{align-items:flex-start;border-color:var(--hold)}
+.nudge.help b{color:var(--hold)}
+.nudge.help .steps{margin-top:6px}
 .nudge button{padding:6px 12px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;font-size:14px;max-width:calc(100% - 32px)}
 .foot a,.note a{color:inherit}.foot{text-align:center;font-size:12px;color:var(--fade);flex:none;padding-top:8px;border-top:1px solid var(--rule)}
@@ -367,6 +370,21 @@ function showApp(){
 
 // ===== スマホ通知 =====
 const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const isMobile=isIOS||/Android|Mobile/i.test(navigator.userAgent);
+// 通知がブロックされたときの直し方(端末とブラウザに合わせる)
+let pushHelp=false;
+function pushFix(){
+  const ua=navigator.userAgent,mac=/Macintosh/.test(ua),win=/Windows/.test(ua),ff=/Firefox\//.test(ua),saf=/Safari\//.test(ua)&&!/Chrome\/|Chromium|Edg\//.test(ua);
+  let st;
+  if(isIOS)st=["iPhoneの「設定」を開く","「通知」→「財布番」を選ぶ","「通知を許可」をオンにして、財布番を開き直す"];
+  else if(/Android/.test(ua))st=["アドレスバーの左のアイコンを押す","「権限」→「通知」を「許可」にする","ページを再読み込みして、もう一度「オンにする」を押す"];
+  else if(saf)st=["画面上の「Safari」→「設定」を開く","「Webサイト」→「通知」を選ぶ","このサイトを「許可」にして、ページを再読み込みする"];
+  else if(ff)st=["アドレスバーの左の鍵のアイコンを押す","「通知を受信」の「ブロック」の横の×を押す","ページを再読み込みして、もう一度「オンにする」を押す"];
+  else st=["アドレスバーの左のアイコン(鍵やつまみの形)を押す","「通知」を「許可」にする","ページを再読み込みして、もう一度「オンにする」を押す"];
+  const os=win?"それでも届かないときは、Windowsの「設定」→「システム」→「通知」で、使っているブラウザの通知をオンにしてください。"
+    :mac&&!isIOS?"それでも届かないときは、Macの「システム設定」→「通知」で、使っているブラウザの「通知を許可」をオンにしてください。":"";
+  return `<ol class="note steps">${st.map(x=>`<li>${x}</li>`).join("")}</ol>${os?`<div class="note">${os}</div>`:""}${!isMobile?`<div class="note">アプリの中の画面から開いていると、通知を受け取れないことがあります。いつも使っているブラウザで開いてください。</div>`:""}`;
+}
 const standalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
 function b64ToU8(s){s=s.replace(/-/g,"+").replace(/_/g,"/");const p=s.length%4?"=".repeat(4-s.length%4):"";const b=atob(s+p);return Uint8Array.from(b,c=>c.charCodeAt(0))}
 async function checkPush(){
@@ -383,7 +401,7 @@ async function enablePush(){
   if(pushState==="needs-install"){setTab("setup");toast("先にホーム画面に追加してください");return}
   try{
     const perm=await Notification.requestPermission();
-    if(perm!=="granted"){pushState=perm==="denied"?"denied":"off";render();toast("通知が許可されませんでした");return}
+    if(perm!=="granted"){pushState=perm==="denied"?"denied":"off";pushHelp=true;render();toast("通知が許可されませんでした");return}
     swReg=swReg||await navigator.serviceWorker.register("sw.js");
     await navigator.serviceWorker.ready;
     const v=await fetch(API+"/vapid").then(r=>r.json());
@@ -440,7 +458,9 @@ function render(){
 function renderTop(){
   const nudge=$("nudge"),con=$("connect");
   if(!D){nudge.innerHTML="";con.innerHTML="";return}
-  nudge.innerHTML=pushState==="off"?`<div class="nudge"><div><b>スマホに通知を受け取る</b><div class="note">承認待ちを通知から承認できます</div></div><button id="push-on" class="primary">オンにする</button></div>`
+  let hideHelp=false;try{hideHelp=localStorage.getItem("saifuban.pushhelp")==="hide"}catch(_){}
+  nudge.innerHTML=(pushState==="denied"||(pushState==="off"&&pushHelp))&&!hideHelp?`<div class="nudge help"><div><b>${pushState==="denied"?"通知がブロックされています":"通知が許可されませんでした"}</b><div class="note">${pushState==="denied"?"ブラウザの設定で、このサイトの通知を許可してください。":"もう一度「オンにする」を押して、出てきた確認で「許可」を選んでください。出てこないときは、ブラウザの設定で許可してください。"}</div>${pushFix()}</div><div class="row">${pushState==="off"?`<button id="push-on" class="primary">オンにする</button>`:""}<button id="push-help-hide">閉じる</button></div></div>`
+    :pushState==="off"?`<div class="nudge"><div><b>${isMobile?"スマホ":"このパソコン"}に通知を受け取る</b><div class="note">承認待ちを通知から承認できます</div></div><button id="push-on" class="primary">オンにする</button></div>`
     :pushState==="needs-install"?`<div class="nudge"><div><b>通知を受け取るには</b><div class="note">共有ボタン →「ホーム画面に追加」から開いてください</div></div><button data-tab="setup">やり方</button></div>`:"";
   const ga=!newKey&&guideFor?D.agents.find(x=>x.id===guideFor):null;
   if(newKey||ga){
@@ -493,7 +513,7 @@ export ${AP.env}_API_KEY="${esc(newKey.key)}"</code><div class="row"><button dat
     con.innerHTML=`<div class="connect"><h2>${D.agents.length?"別のAIをつなぐ":"AIをつなぐ"}</h2>
       <div class="q"><b>1日いくらまで使っていい?</b><div class="chips">${dOpts.map(v=>chip("daily",v,fm(v))).join("")}</div></div>
       <div class="q"><b>いくら以下なら、あなたに聞かずに払っていい?</b><div class="chips">${aOpts.map(v=>chip("auto",v,v?fm(v)+"まで":"毎回聞く")).join("")}</div>
-        <div class="note">それより高い支払いは、あなたのスマホに承認を聞きにきます。</div></div>
+        <div class="note">それより高い支払いは、あなたに通知で承認を聞きにきます。</div></div>
       <label class="q"><b>名前(なくてもOK)</b><input id="n-name" placeholder="例: 自宅のClaude"></label>
       <div class="row"><button id="add" class="primary big">つなぐ</button>${D.agents.length?'<button id="wiz-close">やめる</button>':""}</div></div>`;
     return}
@@ -518,7 +538,7 @@ function renderSetup(){
     on:`<div class="full note">この端末に、承認待ちの通知が届きます。通知の「承認する」「却下」ボタンでそのまま判断できます(iPhoneでは通知を押すとこの画面が開きます)。</div>
         <div class="full row"><button id="push-test">テスト通知を送る</button><button id="push-off" class="danger">この端末の通知をオフ</button></div>`,
     off:`<div class="full note">オンにすると、承認待ちが出たときにこの端末へ通知が届きます。</div><div class="full"><button id="push-on" class="primary">通知をオンにする</button></div>`,
-    denied:`<div class="full note">この端末では通知がブロックされています。端末の設定でこのアプリの通知を許可してから、もう一度開いてください。</div>`,
+    denied:`<div class="full note">この端末では通知がブロックされています。直し方:</div><div class="full">${pushFix()}</div>`,
     "needs-install":`<ol class="full note steps"><li>Safariの下にある共有ボタン(四角から矢印)を押す</li><li>「ホーム画面に追加」を選ぶ</li><li>ホーム画面にできた「財布番」から開いて、ここで通知をオンにする</li></ol>
         <div class="full note">iPhoneでは、ホーム画面に追加したアプリからだけ通知を受け取れます(iOS 16.4以降)。</div>`,
     unsupported:`<div class="full note">このブラウザは通知に対応していません。iPhoneはSafari、AndroidはChromeで開いてください。</div>`,
@@ -534,7 +554,7 @@ function renderSetup(){
   const curCard=`<div class="rule"><div class="head"><b>通貨</b><span class="note">${U?"ドル ($)":"円 (¥)"}</span></div>
       <div class="full note">金額を円とドルのどちらで表示・設定するかを選べます。ドルは1ドル=${esc(RATE())}円で換算します(中身の記録は円のままです)。</div>
       <div class="full row"><button data-cur="JPY"${U?"":' class="primary"'}>円 (¥)</button><button data-cur="USD"${U?' class="primary"':""}>ドル ($)</button></div></div>`;
-  $("tab-setup").innerHTML=curCard+`<div class="rule"><div class="head"><b>スマホ通知</b><span class="note">${{on:"オン",off:"オフ",denied:"ブロック中","needs-install":"ホーム画面に追加が必要",unsupported:"非対応",checking:""}[pushState]}</span></div>${pushCard}</div>
+  $("tab-setup").innerHTML=curCard+`<div class="rule"><div class="head"><b>通知</b><span class="note">${{on:"オン",off:"オフ",denied:"ブロック中","needs-install":"ホーム画面に追加が必要",unsupported:"非対応",checking:""}[pushState]}</span></div>${pushCard}</div>
     <div class="rule"><div class="head"><b>合言葉(アカウント)</b></div>
       <div class="full note">別の端末で開くときや、スマホを替えたときに使います。人に見せないでください。</div>
       <code id="ok-key2" class="full">${esc(OWNER)}</code>
@@ -552,7 +572,7 @@ function renderRules(){
     <div class="head"><b>${esc(a.name)}</b><span class="note">${a.active?"稼働中":"停止中"}</span></div>
     <label>1日いくらまで(${CL()})<input id="r-${a.id}-daily" data-f="daily" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.daily)}"></label>
     <label>聞かずに払っていい額(${CL()})<input id="r-${a.id}-auto" data-f="auto" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.auto)}"></label>
-    <label class="full chk"><input type="checkbox" data-f="known_only"${a.known_only?" checked":""}>聞かずに払うのは、前に払ったことがある支払先だけ(初めての支払先はスマホで確認)</label>
+    <label class="full chk"><input type="checkbox" data-f="known_only"${a.known_only?" checked":""}>聞かずに払うのは、前に払ったことがある支払先だけ(初めての支払先はあなたが確認)</label>
     <div class="full row"><button data-save="${a.id}" class="primary">保存</button><button data-howto="${a.id}">つなぎ方を見る</button></div>
     <details class="more"><summary>もっと細かく</summary><div class="inner">
       <label>1回の上限(${CL()})<input id="r-${a.id}-per_tx" data-f="per_tx" type="number" inputmode="decimal" min="0" step="any" value="${toD(a.per_tx)}"></label>
@@ -621,6 +641,7 @@ document.addEventListener("click",async e=>{
   if(b.dataset.cur){const c=b.dataset.cur==="USD"?"USD":"JPY";if(c===CURX())return;return run("set_currency",{currency:c},c==="USD"?"ドル表示にしました":"円表示にしました")}
   if(b.id==="push-on")return enablePush();
   if(b.id==="push-off")return disablePush();
+  if(b.id==="push-help-hide"){pushHelp=false;try{localStorage.setItem("saifuban.pushhelp","hide")}catch(_){}return renderTop()}
   if(b.id==="push-test"){const t=await api("push_test");toast(t.sent?"テスト通知を送りました":"送れませんでした。通知をオンにし直してください");return}
   if(b.dataset.pkey){const p=b.dataset.pkey;if(!PROV[p])return;const inp=$(b.dataset.in&&/^ck-[a-z]+$/.test(b.dataset.in)?b.dataset.in:"pk-"+p),k=inp?inp.value.trim():"";
     if(k.length<20||/\s/.test(k)){toast("APIキーを正しく貼り付けてください");return}
