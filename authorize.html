@@ -47,7 +47,7 @@ button:disabled{opacity:.5;cursor:default}
 (function(){
 const API="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-app";
 const KEY="saifuban.owner";
-let lang="ja";try{lang=localStorage.getItem("saifuban.lang")||(navigator.language||"").slice(0,2)==="ja"?"ja":"en"}catch(_){lang=(navigator.language||"").slice(0,2)==="ja"?"ja":"en"}
+const browserLang=(navigator.language||"").slice(0,2)==="ja"?"ja":"en";let lang=browserLang;try{const saved=localStorage.getItem("saifuban.lang");if(saved==="en"||saved==="ja")lang=saved}catch(_){}
 try{const l=localStorage.getItem("saifuban.lang");if(l)lang=l==="en"?"en":"ja"}catch(_){}
 const T={
  ja:{title:"AIの財布番",sub:"接続の許可",loading:"読み込み中…",

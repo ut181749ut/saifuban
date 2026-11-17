@@ -1,4 +1,4 @@
-// 言語ボタンで英語に切り替え(最初は日本語。?lang=en / ?lang=ja でも切り替え可)
+// 表示する言語。?lang=en / ?lang=ja、言語ボタンで選んだもの、なければブラウザの言語(日本語以外は英語)
 (function () {
   let lang = null;
   try {
@@ -6,6 +6,10 @@
     if (q === "en" || q === "ja") { localStorage.setItem("saifuban.lang", q); lang = q; }
     else lang = localStorage.getItem("saifuban.lang");
   } catch (_) {}
+  if (lang !== "en" && lang !== "ja") {
+    const prefs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "ja"]);
+    lang = /^ja\b/i.test(String(prefs[0] || "")) ? "ja" : "en";
+  }
   if (lang !== "en") lang = "ja";
   window.SAIFUBAN_LANG = lang;
   if (lang !== "en") return;
