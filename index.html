@@ -154,6 +154,27 @@ details.more .inner .full{grid-column:1/-1}
 
 @media (display-mode: standalone){.wrap{height:100%}.receipt{height:100%}}
 .welcome{display:flex;flex-direction:column;gap:16px;padding-block:8px}
+.wtext,.wmedia,.wtext2,.side{display:contents}
+/* パソコンなど広い画面: 画面の幅を使い、左にAIの残り予算とつなぎ方、右にタブを並べる */
+@media (min-width:960px){
+  .wrap{max-width:1240px;padding-inline:32px;padding-block:18px}
+  h1{font-size:28px}
+  .scroll{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:24px 32px;align-content:start;align-items:start}
+  .scroll > *{grid-column:1/-1}
+  .scroll > .side{display:flex;flex-direction:column;gap:12px;grid-column:1}
+  .scroll > .panel{grid-column:2;border-left:1px solid var(--rule);padding-left:32px;min-height:60vh}
+  .scroll > .panel[hidden]{display:none}
+  .agents{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}
+  .welcome{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr;gap:20px 48px;align-items:start;padding-block:24px}
+  .wtext,.wtext2{display:flex;flex-direction:column;gap:16px;grid-column:1}
+  .welcome > :not(.wtext):not(.wtext2):not(.wmedia){grid-column:1}
+  .wmedia{display:block;grid-column:2;grid-row:1/3;position:sticky;top:0}
+  .wmedia .demo{max-width:none;margin:0}
+  .welcome h2{font-size:30px;line-height:1.3}
+  .welcome .note{font-size:15px}
+  .welcome code.urlbox{font-size:13px}
+}
+
 .welcome h2{margin:0;font-size:20px;text-wrap:balance}
 .welcome p{margin:0}
 .steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
@@ -187,9 +208,11 @@ a.btn.primary{background:var(--ink);color:var(--paper)}
   <section id="welcome" class="welcome" hidden></section>
   <div id="err" class="err" hidden></div>
   <div id="banner" class="banner" hidden>緊急停止中 — すべての支払いを止めています</div>
+  <div class="side">
   <div id="nudge"></div>
   <div id="connect"></div>
   <div id="agents" class="agents"></div>
+  </div>
   <div class="panel" id="panel" hidden>
     <div class="tabs" role="tablist">
       <button role="tab" data-tab="queue" aria-selected="true">承認待ち<span id="qc" class="count" hidden>0</span></button>
@@ -311,28 +334,28 @@ function showWelcome(reason){
   const invalid=reason==="invalid"?`<div class="err"><b>この端末の合言葉が使えなくなっています</b><div>もう一度入れ直すか、新しく始めてください。</div></div>`:"";
   // 開発者向けの場所(GitHub・dev.to・Qiitaなど)から来た人には、API代の上限とClaude Codeの設定を先に見せる
   if(devVisit()){
-    w.innerHTML=`<h2>AIエージェントのAPI代に、確実な上限を</h2>
+    w.innerHTML=`<div class="wtext"><h2>AIエージェントのAPI代に、確実な上限を</h2>
     <p class="note">Claude Code・OpenAI SDK・LangChain・CrewAIなどで、接続先とキーを差し替えるだけ。1日・週・月の予算に達したら、財布番がリクエストを止めます。本物のAPIキーはAIに渡りません。</p>
     <code class="urlbox">export ANTHROPIC_BASE_URL="${FN}/saifuban-proxy/anthropic"
 export ANTHROPIC_API_KEY="sbk_…"</code>
     <ol class="note steps"><li>はじめる(メール登録なし・無料)</li><li>AIを1つ作って、エージェントキー(sbk_…)を受け取る</li><li>「設定」でAPIキーを預けて、上の2行を設定する</li></ol>
     ${invalid}
-    <div class="row"><button id="signup" class="primary big">はじめる(無料)</button><a class="btn" style="color:inherit;text-decoration:none" href="challenge.html?src=site">上限を破れるか試す</a></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div>
-    ${LANG==="en"?`<video class="demo" src="api-en.mp4" autoplay muted loop playsinline preload="metadata"></video>`:`<img class="demo" src="api-ja.gif" alt="AIがループしても、1日の予算でAPIの呼び出しが止まる様子">`}
-    <p class="note">OpenAI・Anthropic・Google・OpenRouterに対応。支払いの前にスマホで承認する機能(Claude・ChatGPT・Museのコネクタ)もあります。</p>
-    ${restore}`;
+    <div class="row"><button id="signup" class="primary big">はじめる(無料)</button><a class="btn" style="color:inherit;text-decoration:none" href="challenge.html?src=site">上限を破れるか試す</a></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div></div>
+    <div class="wmedia">${LANG==="en"?`<video class="demo" src="api-en.mp4" autoplay muted loop playsinline preload="metadata"></video>`:`<img class="demo" src="api-ja.gif" alt="AIがループしても、1日の予算でAPIの呼び出しが止まる様子">`}</div>
+    <div class="wtext2"><p class="note">OpenAI・Anthropic・Google・OpenRouterに対応。支払いの前にスマホで承認する機能(Claude・ChatGPT・Museのコネクタ)もあります。</p>
+    ${restore}</div>`;
     return}
-  w.innerHTML=`<h2>AIがお金を使う前に、あなたに聞きにくる</h2>
+  w.innerHTML=`<div class="wtext"><h2>AIがお金を使う前に、あなたに聞きにくる</h2>
     ${LANG==="en"?`<p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>
     <p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>`:`<p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>
     <p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>`}
     <p class="note">Claude・ChatGPT・Muse・Cursorで使えます。Museならチャットに1通送るだけでつながります。日本語・円で使えます。メール登録なし・無料。</p>
     ${reason==="invalid"?`<div class="err"><b>この端末の合言葉が使えなくなっています</b><div>もう一度入れ直すか、新しく始めてください。</div></div>`:""}
-    <div class="row"><button id="signup" class="primary big">はじめる(無料)</button></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div>
-    <video class="demo" src="${LANG==="en"?"api-en":"demo-ja"}.mp4" autoplay muted loop playsinline preload="metadata"></video>
-    <details class="more"><summary>別の端末ですでに使っている</summary><div class="inner">
+    <div class="row"><button id="signup" class="primary big">はじめる(無料)</button></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div></div>
+    <div class="wmedia"><video class="demo" src="${LANG==="en"?"api-en":"demo-ja"}.mp4" autoplay muted loop playsinline preload="metadata"></video></div>
+    <div class="wtext2"><details class="more"><summary>別の端末ですでに使っている</summary><div class="inner">
       <label class="full">合言葉(sbo_…)<input id="in-key" autocomplete="off" placeholder="sbo_..."></label>
-      <div class="full"><button id="restore" class="primary">この端末で使う</button></div></div></details>`;
+      <div class="full"><button id="restore" class="primary">この端末で使う</button></div></div></details></div>`;
 }
 function showApp(){
   syncLang();
@@ -427,13 +450,36 @@ function renderTop(){
     const step1=newKey
       ?step(1,"URLをコピーする",`<code id="nu" class="urlbox">${FN}/saifuban-mcp/${esc(newKey.key)}</code><div class="row"><button data-copy="nu" data-step="1" class="primary">URLをコピー</button></div>`)
       :step(1,"つなぐURLを用意する",`<div class="note">前にコピーしたURLがあれば、それをそのまま使えます。手元にないときは、作り直してください(前のURLは使えなくなります)。</div><div class="row"><button data-rotate="${ga.id}" class="primary">URLを作り直す</button></div>`);
-    con.innerHTML=`<div class="connect"><h2>「${esc(name)}」をAIにつなぐ</h2>
-      <div class="seg" role="tablist" aria-label="使っているAI">${GUIDES.map(g=>`<button class="segb" data-guide="${g.id}" aria-selected="${guideAI===g.id}">${g.label}</button>`).join("")}</div>
+    // 開発者向けの場所から来た人には、API代の上限(中継)の設定を先に、実際のキー入りで見せる
+    const dev=newKey&&devVisit();
+    const AP=API_SETUP.find(x=>x.p===apiP)||API_SETUP[0];
+    const held=D.providers&&D.providers[AP.p];
+    const dstep=(n,title,body)=>`<li class="gstep"><span class="gnum">${n}</span><div><b>${title}</b>${body}</div></li>`;
+    const nag=D.agents.find(a=>a.name===name);
+    const devBlock=dev?`<div class="connect"><h2>「${esc(name)}」のAPI代に上限をかける</h2>
+      <div class="seg" role="tablist" aria-label="使っているツール">${API_SETUP.map(x=>`<button class="segb" data-apip="${x.p}" aria-selected="${apiP===x.p}">${x.label}</button>`).join("")}</div>
+      <ol class="guide">
+        ${dstep(1,`本物の${PROV[AP.p].label}キーを預ける`,held?`<div class="note">預かり中 ${esc(held)}</div>`:`<div class="note">財布番が暗号化して保管します。AIには渡りません。</div><label>APIキー<input id="ck-${AP.p}" type="password" autocomplete="off" placeholder="${PROV[AP.p].ph}"></label><div class="row"><button data-pkey="${AP.p}" data-in="ck-${AP.p}" class="primary">預ける</button></div>`)}
+        ${dstep(2,"この2行を設定する",`<code id="env" class="urlbox">export ${AP.env}_BASE_URL="${FN}${PROV[AP.p].base}"
+export ${AP.env}_API_KEY="${esc(newKey.key)}"</code><div class="row"><button data-copy="env" class="primary">コピー</button></div><div class="note">${AP.note}</div>`)}
+        ${dstep(3,"いつも通り使う",`<div class="note">${nag?`1日${money(nag.daily)}`:"1日の予算"}に達したら、財布番がリクエストを止めます。予算・週・月の上限は「AIとルール」で変えられます。</div>`)}
+      </ol>
+      <div class="note">このキーはこの画面を閉じると二度と表示されません。人に見せないでください(なくしたら作り直せます)。</div>
+      <div class="row"><button data-hidekey="1">閉じる</button></div></div>`:"";
+    const mcp=`<div class="seg" role="tablist" aria-label="使っているAI">${GUIDES.map(g=>`<button class="segb" data-guide="${g.id}" aria-selected="${guideAI===g.id}">${g.label}</button>`).join("")}</div>
       <ol class="guide">
         ${step1}
         ${G.steps(step,newKey?`${FN}/saifuban-mcp/${esc(newKey.key)}`:"").join("")}
         ${step(4,"つながったか試す",`<div class="note">AIに「財布番で今日の残り予算を見て」と頼んでください。残りの金額が返ってくれば成功です。</div>`)}
       </ol>
+`;
+    if(dev){
+      // 15秒ごとの書き直しで、入力中のキーや開いた折りたたみが消えないようにする
+      const ae=document.activeElement;if(ae&&ae.tagName==="INPUT"&&con.contains(ae))return;
+      const ci=con.querySelector("input[id^=ck-]"),cv=ci?[ci.id,ci.value]:null,mo=!!(con.querySelector(".connect-more")||{}).open;
+      con.innerHTML=devBlock+`<details class="more connect-more"${mo?" open":""}><summary>支払いの前にスマホで承認する(Claude・ChatGPTのコネクタ)</summary><div class="connect">${mcp}</div></details>`;
+      if(cv&&$(cv[0]))$(cv[0]).value=cv[1];return}
+    con.innerHTML=`<div class="connect"><h2>「${esc(name)}」をAIにつなぐ</h2>${mcp}
       ${newKey?`<div class="note">このURLはこの画面を閉じると二度と表示されません。人に見せないでください(なくしたら作り直せます)。</div>`:""}
       <div class="row"><button data-hidekey="1">閉じる</button></div>
       ${newKey?`<details class="more"><summary>パソコンでAPIキーごと見張りたい人向け</summary>
@@ -454,6 +500,12 @@ function renderTop(){
   con.innerHTML="";
 }
 
+// 新しいAIを作った直後に見せる、API代の上限の設定(ツールごと)
+let apiP="anthropic";
+const API_SETUP=[
+  {p:"anthropic",label:"Claude Code",env:"ANTHROPIC",note:"Claude Code・Anthropic SDKはこの2行だけで中継を通ります。ターミナルで設定してから claude を起動してください。"},
+  {p:"openai",label:"OpenAI SDK",env:"OPENAI",note:"OpenAI SDK・LangChain・CrewAIなど、OPENAI_BASE_URL を読むツールで使えます。"},
+  {p:"openrouter",label:"OpenRouter",env:"OPENAI",note:"OpenRouterのキーを預けると、OpenAI互換のツールからClaude・GPT・Geminiなどを使えます。かかった金額がそのまま記録されます。"}];
 const PROV={
   openrouter:{label:"OpenRouter",ph:"sk-or-v1-...",base:"/saifuban-proxy/openrouter/v1",hint:"1つのキーでClaude・GPT・Gemini・Llamaなど何百種類ものモデルを使えるサービス。迷ったらこれ1つで足ります。実際にかかった金額がそのまま記録されます。"},
   anthropic:{label:"Anthropic API",ph:"sk-ant-...",base:"/saifuban-proxy/anthropic",hint:"Claude Code に使うときは ANTHROPIC_BASE_URL にこの住所、ANTHROPIC_API_KEY にエージェントキーを設定します。"},
@@ -524,6 +576,7 @@ document.addEventListener("click",async e=>{
   const b=e.target.closest("button");if(!b)return;
   if(b.dataset.tab)return setTab(b.dataset.tab);
   if(b.dataset.guide){guideAI=b.dataset.guide;return renderTop()}
+  if(b.dataset.apip){if(API_SETUP.some(x=>x.p===b.dataset.apip))apiP=b.dataset.apip;return renderTop()}
   if(b.dataset.copy){if(b.dataset.step){guideDone[b.dataset.step]=true;setTimeout(renderTop,50)}const t=$(b.dataset.copy).textContent;
     try{await navigator.clipboard.writeText(t);toast("コピーしました")}catch(_){const r=document.createRange();r.selectNodeContents($(b.dataset.copy));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("選択しました。長押しでコピーしてください")}return}
   if(b.id==="langbtn"){const nl=LANG==="en"?"ja":"en";try{localStorage.setItem("saifuban.lang",nl);localStorage.removeItem("saifuban.lang_synced")}catch(_){}
@@ -557,7 +610,7 @@ document.addEventListener("click",async e=>{
   if(b.id==="wiz-close"){wizOpen=false;return renderTop()}
   if(b.id==="add"){
     const name=(val("n-name").trim()||("AI "+(D.agents.length+1))).slice(0,60);
-    const r=await run("create_agent",{name,per_tx:fromD(wiz.daily),daily:fromD(wiz.daily),auto:fromD(Math.min(wiz.auto,wiz.daily)),merchants:[]},"つなぐURLができました");
+    const r=await run("create_agent",{name,per_tx:fromD(wiz.daily),daily:fromD(wiz.daily),auto:fromD(Math.min(wiz.auto,wiz.daily)),merchants:[]},devVisit()?"エージェントキーができました":"つなぐURLができました");
     if(r&&r.agent_key){guideDone={};guideFor=null;newKey={name,key:r.agent_key};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
   if(b.dataset.hidekey){newKey=null;guideFor=null;return renderTop()}
   if(b.dataset.howto){if(!UUID.test(b.dataset.howto))return;newKey=null;guideFor=b.dataset.howto;guideDone={};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"});return}
@@ -569,7 +622,7 @@ document.addEventListener("click",async e=>{
   if(b.id==="push-on")return enablePush();
   if(b.id==="push-off")return disablePush();
   if(b.id==="push-test"){const t=await api("push_test");toast(t.sent?"テスト通知を送りました":"送れませんでした。通知をオンにし直してください");return}
-  if(b.dataset.pkey){const p=b.dataset.pkey;if(!PROV[p])return;const inp=$("pk-"+p),k=inp.value.trim();
+  if(b.dataset.pkey){const p=b.dataset.pkey;if(!PROV[p])return;const inp=$(b.dataset.in&&/^ck-[a-z]+$/.test(b.dataset.in)?b.dataset.in:"pk-"+p),k=inp?inp.value.trim():"";
     if(k.length<20||/\s/.test(k)){toast("APIキーを正しく貼り付けてください");return}
     const r=await run("set_provider_key",{provider:p,key:k},`${PROV[p].label}のキーを預かりました`);
     if(r&&r.ok)inp.value="";return}
