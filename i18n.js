@@ -84,6 +84,8 @@
     "切り替える": "Switch",
     "今のまま": "Keep current",
     "iPhoneで通知を受け取るには": "To get notifications on iPhone",
+    "iPhoneの方へ": "On iPhone?",
+    "先に、Safariの共有ボタン(四角から矢印)→「ホーム画面に追加」をして、ホーム画面の「財布番」から始めてください。通知を受け取れるのはホーム画面のアプリだけで、Safariで始めると合言葉を入れ直す手間がかかります。": "First tap Share (square with an arrow) → \"Add to Home Screen\" in Safari, then start from Saifuban on your Home Screen. Notifications only work in the Home Screen app, and starting in Safari means entering your passphrase again later.",
     "下の「合言葉をコピー」を押す": "Press \"Copy passphrase\" below",
     "Safariの共有ボタン(四角から矢印)→「ホーム画面に追加」": "In Safari, tap Share (square with an arrow) → \"Add to Home Screen\"",
     "ホーム画面の「財布番」を開き、「別の端末ですでに使っている」に貼り付けて「この端末で使う」": "Open Saifuban from your Home Screen, paste it under \"I already use it on another device\" and press \"Use on this device\"",
