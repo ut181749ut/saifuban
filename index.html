@@ -162,6 +162,9 @@ details.more .inner .full{grid-column:1/-1}
 @media (display-mode: standalone){.wrap{height:100%}.receipt{height:100%}}
 .welcome{display:flex;flex-direction:column;gap:16px;padding-block:8px}
 .wtext,.wmedia,.wtext2,.side{display:contents}
+.faq .qa{display:flex;flex-direction:column;gap:10px;padding:10px 0 4px}
+.faq .qa b{font-size:14px}
+.faq .qa p{margin:2px 0 0}
 /* パソコンなど広い画面: 画面の幅を使い、左にAIの残り予算とつなぎ方、右にタブを並べる */
 @media (min-width:960px){
   .wrap{max-width:1240px;padding-inline:32px;padding-block:18px}
@@ -338,6 +341,16 @@ function showWelcome(reason){
     return}
   // iPhoneのSafariで開いている人には、先にホーム画面に追加してから始めてもらう(通知はホーム画面のアプリだけ。Safariとは合言葉も別になる)
   const iosTip=isIOS&&!standalone()?`<div class="nudge help"><div><b>iPhoneの方へ</b><div class="note">先に、Safariの共有ボタン(四角から矢印)→「ホーム画面に追加」をして、ホーム画面の「財布番」から始めてください。通知を受け取れるのはホーム画面のアプリだけで、Safariで始めると合言葉を入れ直す手間がかかります。</div></div></div>`:"";
+  // よくある質問(はじめる前の不安に先に答える)
+  const QA=[
+    ["APIキーは安全?","暗号化した保管庫に保存し、AIには代わりのキー(sbk_…)だけを渡します。画面に出るのは末尾の数文字だけで、いつでも外せます。"],
+    ["財布番が止まったらどうなる?","AIはAPIを呼べなくなり、支払いの許可も出ません。使いすぎる方向ではなく、止まる方向に倒れます。"],
+    ["お金は財布番を通る?","通りません。財布番は「使ってよいか」を判断するだけで、カードや口座の情報も受け取りません。"],
+    ["料金は?","現在は無料です。有料にする場合は、事前にサイトでお知らせします。"],
+    ["何を保存する?","メールアドレスや名前は受け取りません。合言葉は元に戻せない形で保存し、AIとの会話の中身も保存しません。"],
+    ["中身を確かめられる?","ソースコードはGitHubで公開しています。上限を破れるか誰でも試せるチャレンジも公開中です。"]];
+  const faq=`<details class="more faq"><summary>よくある質問</summary><div class="qa">${QA.map(([q,a])=>`<div><b>${q}</b><p class="note">${a}</p></div>`).join("")}
+    <p class="note"><a href="https://github.com/ut181749ut/saifuban" target="_blank" rel="noopener">GitHub</a> · <a href="challenge.html?src=faq">チャレンジ</a> · <a href="privacy.html" target="_blank">プライバシーポリシー</a> · <a href="terms.html" target="_blank">利用規約</a></p></div></details>`;
   const restore=`<details class="more"><summary>別の端末ですでに使っている</summary><div class="inner">
       <label class="full">合言葉(sbo_…)<input id="in-key" autocomplete="off" placeholder="sbo_..."></label>
       <div class="full"><button id="restore" class="primary">この端末で使う</button></div></div></details>`;
@@ -353,7 +366,7 @@ export ANTHROPIC_API_KEY="sbk_…"</code>
     ${iosTip}<div class="row"><button id="signup" class="primary big">はじめる(無料)</button><a class="btn" style="color:inherit;text-decoration:none" href="challenge.html?src=site">上限を破れるか試す</a></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div></div>
     <div class="wmedia">${LANG==="en"?`<video class="demo" src="api-en.mp4" autoplay muted loop playsinline preload="metadata"></video>`:`<img class="demo" src="api-ja.gif" alt="AIがループしても、1日の予算でAPIの呼び出しが止まる様子">`}</div>
     <div class="wtext2"><p class="note">OpenAI・Anthropic・Google・OpenRouterに対応。支払いの前にスマホで承認する機能(Claude・ChatGPT・Museのコネクタ)もあります。</p>
-    ${restore}</div>`;
+    ${faq}${restore}</div>`;
     return}
   w.innerHTML=`<div class="wtext"><h2>AIがお金を使う前に、あなたに聞きにくる</h2>
     ${LANG==="en"?`<p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>
@@ -363,7 +376,7 @@ export ANTHROPIC_API_KEY="sbk_…"</code>
     ${reason==="invalid"?`<div class="err"><b>この端末の合言葉が使えなくなっています</b><div>もう一度入れ直すか、新しく始めてください。</div></div>`:""}
     ${iosTip}<div class="row"><button id="signup" class="primary big">はじめる(無料)</button></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div></div>
     <div class="wmedia"><video class="demo" src="${LANG==="en"?"api-en":"demo-ja"}.mp4" autoplay muted loop playsinline preload="metadata"></video></div>
-    <div class="wtext2"><details class="more"><summary>別の端末ですでに使っている</summary><div class="inner">
+    <div class="wtext2">${faq}<details class="more"><summary>別の端末ですでに使っている</summary><div class="inner">
       <label class="full">合言葉(sbo_…)<input id="in-key" autocomplete="off" placeholder="sbo_..."></label>
       <div class="full"><button id="restore" class="primary">この端末で使う</button></div></div></details></div>`;
 }
@@ -607,7 +620,7 @@ document.addEventListener("click",async e=>{
   if(b.dataset.tab)return setTab(b.dataset.tab);
   if(b.dataset.guide){guideAI=b.dataset.guide;return renderTop()}
   if(b.dataset.apip){if(API_SETUP.some(x=>x.p===b.dataset.apip))apiP=b.dataset.apip;return renderTop()}
-  if(b.dataset.copy){if(b.dataset.step){guideDone[b.dataset.step]=true;setTimeout(renderTop,50)}const t=$(b.dataset.copy).textContent;
+  if(b.dataset.copy){if(/^(nu|env|cc|mm|nk|base-)/.test(b.dataset.copy))trackOnce("copy_setup");if(b.dataset.step){guideDone[b.dataset.step]=true;setTimeout(renderTop,50)}const t=$(b.dataset.copy).textContent;
     try{await navigator.clipboard.writeText(t);toast("コピーしました")}catch(_){const r=document.createRange();r.selectNodeContents($(b.dataset.copy));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("選択しました。長押しでコピーしてください")}return}
   if(b.id==="langbtn"){const nl=LANG==="en"?"ja":"en";try{localStorage.setItem("saifuban.lang",nl);localStorage.removeItem("saifuban.lang_synced")}catch(_){}
     if(OWNER)await api("set_lang",{lang:nl});try{if(OWNER)localStorage.setItem("saifuban.lang_synced",nl)}catch(_){}
@@ -641,7 +654,7 @@ document.addEventListener("click",async e=>{
   if(b.id==="add"){
     const name=(val("n-name").trim()||("AI "+(D.agents.length+1))).slice(0,60);
     const r=await run("create_agent",{name,per_tx:fromD(wiz.daily),daily:fromD(wiz.daily),auto:fromD(Math.min(wiz.auto,wiz.daily)),merchants:[]},devVisit()?"エージェントキーができました":"つなぐURLができました");
-    if(r&&r.agent_key){guideDone={};guideFor=null;newKey={name,key:r.agent_key};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
+    if(r&&r.agent_key){track("agent_created");guideDone={};guideFor=null;newKey={name,key:r.agent_key};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"})}return}
   if(b.dataset.hidekey){newKey=null;guideFor=null;return renderTop()}
   if(b.dataset.howto){if(!UUID.test(b.dataset.howto))return;newKey=null;guideFor=b.dataset.howto;guideDone={};wizOpen=false;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"});return}
   if(b.dataset.rotate){const id=b.dataset.rotate;if(!UUID.test(id))return;const a=D.agents.find(x=>x.id===id);if(!a)return;
@@ -661,7 +674,7 @@ document.addEventListener("click",async e=>{
   if(b.dataset.pkey){const p=b.dataset.pkey;if(!PROV[p])return;const inp=$(b.dataset.in&&/^ck-[a-z]+$/.test(b.dataset.in)?b.dataset.in:"pk-"+p),k=inp?inp.value.trim():"";
     if(k.length<20||/\s/.test(k)){toast("APIキーを正しく貼り付けてください");return}
     const r=await run("set_provider_key",{provider:p,key:k},`${PROV[p].label}のキーを預かりました`);
-    if(r&&r.ok)inp.value="";return}
+    if(r&&r.ok){inp.value="";track("key_stored")}return}
   if(b.dataset.pkeyoff){const p=b.dataset.pkeyoff;if(!PROV[p])return;
     if(delArm!=="pk-"+p){delArm="pk-"+p;b.textContent="もう一度押すとやめます";return}
     delArm=null;return run("set_provider_key",{provider:p,key:""},`${PROV[p].label}のキーを外しました`)}
@@ -674,6 +687,9 @@ async function syncLang(){try{if(OWNER&&localStorage.getItem("saifuban.lang_sync
 function devVisit(){try{let s=sessionStorage.getItem("saifuban.src");if(!s){s=srcOf();sessionStorage.setItem("saifuban.src",s)}return /github|devto|dev\.to|ycombinator|^hn$|reddit|qiita|zenn|challenge|^ch-|^site$/i.test(s)}catch(_){return false}}
 function srcOf(){try{const q=new URLSearchParams(location.search);const s=q.get("src")||q.get("utm_source")||q.get("ref");if(s)return s;
   const r=document.referrer?new URL(document.referrer).hostname:"";return r&&r!==location.hostname?r:"direct"}catch(_){return "direct"}}
+document.addEventListener("toggle",e=>{if(e.target.classList&&e.target.classList.contains("faq")&&e.target.open)trackOnce("faq_open")},true);
+// 同じタブで1回だけ数える
+function trackOnce(event){try{if(sessionStorage.getItem("saifuban.t."+event))return;sessionStorage.setItem("saifuban.t."+event,"1")}catch(_){}track(event)}
 function track(event){try{let src=sessionStorage.getItem("saifuban.src");if(!src){src=srcOf();sessionStorage.setItem("saifuban.src",src)}
   fetch(API,{method:"POST",keepalive:true,headers:{"content-type":"application/json"},body:JSON.stringify({action:"track",event,src,lang:LANG})}).catch(()=>{})}catch(_){}}
 // パソコンのQRコードをスマホで読み取って来たとき(#k=合言葉)。アドレスからはすぐ消す
