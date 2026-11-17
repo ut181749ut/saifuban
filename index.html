@@ -148,6 +148,10 @@ details.more .inner .full{grid-column:1/-1}
 .nudge.help{align-items:flex-start;border-color:var(--hold)}
 .nudge.help b{color:var(--hold)}
 .nudge.help .steps{margin-top:6px}
+.nudge.qr{align-items:flex-start;flex-wrap:nowrap}
+.qrimg{width:180px;flex:none;background:#fff;padding:4px;border:1px solid var(--rule)}
+.qrimg svg{display:block;width:100%;height:auto}
+@media (max-width:520px){.nudge.qr{flex-wrap:wrap}.qrimg{width:100%;max-width:240px}}
 .nudge button{padding:6px 12px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;font-size:14px;max-width:calc(100% - 32px)}
 .foot a,.note a{color:inherit}.foot{text-align:center;font-size:12px;color:var(--fade);flex:none;padding-top:8px;border-top:1px solid var(--rule)}
@@ -199,6 +203,7 @@ a.btn{display:inline-block;text-decoration:none;border:1.5px solid var(--ink);pa
 a.btn.primary{background:var(--ink);color:var(--paper)}
 </style>
 <script src="i18n.js"></script>
+<script src="qr.js" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -372,7 +377,7 @@ function showApp(){
 const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 const isMobile=isIOS||/Android|Mobile/i.test(navigator.userAgent);
 // 通知がブロックされたときの直し方(端末とブラウザに合わせる)
-let pushHelp=false;
+let pushHelp=false,qrOpen=false,linkConflict=null,linked=false;
 function pushFix(){
   const ua=navigator.userAgent,mac=/Macintosh/.test(ua),win=/Windows/.test(ua),ff=/Firefox\//.test(ua),saf=/Safari\//.test(ua)&&!/Chrome\/|Chromium|Edg\//.test(ua);
   let st;
@@ -459,9 +464,13 @@ function renderTop(){
   const nudge=$("nudge"),con=$("connect");
   if(!D){nudge.innerHTML="";con.innerHTML="";return}
   let hideHelp=false;try{hideHelp=localStorage.getItem("saifuban.pushhelp")==="hide"}catch(_){}
-  nudge.innerHTML=(pushState==="denied"||(pushState==="off"&&pushHelp))&&!hideHelp?`<div class="nudge help"><div><b>${pushState==="denied"?"通知がブロックされています":"通知が許可されませんでした"}</b><div class="note">${pushState==="denied"?"ブラウザの設定で、このサイトの通知を許可してください。":"もう一度「オンにする」を押して、出てきた確認で「許可」を選んでください。出てこないときは、ブラウザの設定で許可してください。"}</div>${pushFix()}</div><div class="row">${pushState==="off"?`<button id="push-on" class="primary">オンにする</button>`:""}<button id="push-help-hide">閉じる</button></div></div>`
-    :pushState==="off"?`<div class="nudge"><div><b>${isMobile?"スマホ":"このパソコン"}に通知を受け取る</b><div class="note">承認待ちを通知から承認できます</div></div><button id="push-on" class="primary">オンにする</button></div>`
-    :pushState==="needs-install"?`<div class="nudge"><div><b>通知を受け取るには</b><div class="note">共有ボタン →「ホーム画面に追加」から開いてください</div></div><button data-tab="setup">やり方</button></div>`:"";
+  const phoneBtn=!isMobile?`<button id="qr-open">スマホで受け取る</button>`:"";
+  if(qrOpen){const url=location.origin+location.pathname+"#k="+OWNER;
+    nudge.innerHTML=`<div class="nudge qr"><div><b>スマホで通知を受け取る</b><ol class="note steps"><li>スマホのカメラでこのQRコードを読み取る</li><li>開いた財布番で「オンにする」を押す(iPhoneは画面の案内にそってホーム画面に追加)</li></ol><div class="note">このQRコードはあなたの合言葉そのものです。人に見せないでください。</div><div class="row"><button id="qr-close">閉じる</button></div></div><div class="qrimg">${window.SBQR?SBQR(url):""}</div></div>`}
+  else nudge.innerHTML=linkConflict?`<div class="nudge help"><div><b>この端末は別の合言葉で使われています</b><div class="note">読み取ったQRコードの合言葉に切り替えると、今の合言葉はこの端末から外れます(なくなりはしません)。</div></div><div class="row"><button id="link-switch" class="primary">切り替える</button><button id="link-keep">今のまま</button></div></div>`
+    :(pushState==="denied"||(pushState==="off"&&pushHelp))&&!hideHelp?`<div class="nudge help"><div><b>${pushState==="denied"?"通知がブロックされています":"通知が許可されませんでした"}</b><div class="note">${pushState==="denied"?"ブラウザの設定で、このサイトの通知を許可してください。":"もう一度「オンにする」を押して、出てきた確認で「許可」を選んでください。出てこないときは、ブラウザの設定で許可してください。"}</div>${pushFix()}</div><div class="row">${pushState==="off"?`<button id="push-on" class="primary">オンにする</button>`:""}${phoneBtn}<button id="push-help-hide">閉じる</button></div></div>`
+    :pushState==="off"?`<div class="nudge"><div><b>${isMobile?"スマホ":"このパソコン"}に通知を受け取る</b><div class="note">承認待ちを通知から承認できます</div></div><div class="row"><button id="push-on" class="primary">オンにする</button>${phoneBtn}</div></div>`
+    :pushState==="needs-install"?`<div class="nudge help"><div><b>iPhoneで通知を受け取るには</b><ol class="note steps"><li>下の「合言葉をコピー」を押す</li><li>Safariの共有ボタン(四角から矢印)→「ホーム画面に追加」</li><li>ホーム画面の「財布番」を開き、「別の端末ですでに使っている」に貼り付けて「この端末で使う」</li><li>「オンにする」を押す</li></ol><div class="note">iPhoneでは、ホーム画面に追加したアプリからだけ通知を受け取れます(iOS 16.4以降)。ホーム画面のアプリはSafariと別あつかいなので、合言葉を入れ直します。</div><code id="own-cp" hidden>${esc(OWNER)}</code><div class="row"><button data-copy="own-cp" class="primary">合言葉をコピー</button></div></div></div>`:"";
   const ga=!newKey&&guideFor?D.agents.find(x=>x.id===guideFor):null;
   if(newKey||ga){
     const name=newKey?newKey.name:ga.name;
@@ -539,10 +548,9 @@ function renderSetup(){
         <div class="full row"><button id="push-test">テスト通知を送る</button><button id="push-off" class="danger">この端末の通知をオフ</button></div>`,
     off:`<div class="full note">オンにすると、承認待ちが出たときにこの端末へ通知が届きます。</div><div class="full"><button id="push-on" class="primary">通知をオンにする</button></div>`,
     denied:`<div class="full note">この端末では通知がブロックされています。直し方:</div><div class="full">${pushFix()}</div>`,
-    "needs-install":`<ol class="full note steps"><li>Safariの下にある共有ボタン(四角から矢印)を押す</li><li>「ホーム画面に追加」を選ぶ</li><li>ホーム画面にできた「財布番」から開いて、ここで通知をオンにする</li></ol>
-        <div class="full note">iPhoneでは、ホーム画面に追加したアプリからだけ通知を受け取れます(iOS 16.4以降)。</div>`,
+    "needs-install":`<div class="full"><ol class="note steps"><li>下の「合言葉をコピー」を押す</li><li>Safariの共有ボタン(四角から矢印)→「ホーム画面に追加」</li><li>ホーム画面の「財布番」を開き、「別の端末ですでに使っている」に貼り付けて「この端末で使う」</li><li>「オンにする」を押す</li></ol><div class="note">iPhoneでは、ホーム画面に追加したアプリからだけ通知を受け取れます(iOS 16.4以降)。ホーム画面のアプリはSafariと別あつかいなので、合言葉を入れ直します。</div><code id="own-cp2" hidden>${esc(OWNER)}</code><div class="row"><button data-copy="own-cp2" class="primary">合言葉をコピー</button></div></div>`,
     unsupported:`<div class="full note">このブラウザは通知に対応していません。iPhoneはSafari、AndroidはChromeで開いてください。</div>`,
-    checking:`<div class="full note">確認中…</div>`}[pushState];
+    checking:`<div class="full note">確認中…</div>`}[pushState]+(!isMobile&&pushState!=="checking"?`<div class="full note">スマホで受け取るときは、QRコードを読み取るだけでスマホでも使えるようになります。</div><div class="full"><button id="qr-open">スマホで受け取る(QRコード)</button></div>`:"");
   const keys=Object.entries(PROV).map(([p,v])=>{const h=D.providers&&D.providers[p];return `<div class="rule"><div class="head"><b>${v.label}</b><span class="note">${h?`預かり中 ${esc(h)}`:"未設定"}</span></div>
       <div class="full note">${v.hint}</div>
       <label class="full">${h?"新しいキーに差し替える":"本物のAPIキーを預ける"}<input id="pk-${p}" type="password" autocomplete="off" placeholder="${v.ph}"></label>
@@ -641,6 +649,11 @@ document.addEventListener("click",async e=>{
   if(b.dataset.cur){const c=b.dataset.cur==="USD"?"USD":"JPY";if(c===CURX())return;return run("set_currency",{currency:c},c==="USD"?"ドル表示にしました":"円表示にしました")}
   if(b.id==="push-on")return enablePush();
   if(b.id==="push-off")return disablePush();
+  if(b.id==="qr-open"){qrOpen=true;renderTop();$("scroll").scrollTo({top:0,behavior:"smooth"});return}
+  if(b.id==="qr-close"){qrOpen=false;return renderTop()}
+  if(b.id==="link-keep"){linkConflict=null;return renderTop()}
+  if(b.id==="link-switch"){const k=linkConflict;OWNER=k;const d=await api("dashboard");if(d.error){toast(errText(d.error));location.reload();return}
+    writeKey(k);linkConflict=null;location.reload();return}
   if(b.id==="push-help-hide"){pushHelp=false;try{localStorage.setItem("saifuban.pushhelp","hide")}catch(_){}return renderTop()}
   if(b.id==="push-test"){const t=await api("push_test");toast(t.sent?"テスト通知を送りました":"送れませんでした。通知をオンにし直してください");return}
   if(b.dataset.pkey){const p=b.dataset.pkey;if(!PROV[p])return;const inp=$(b.dataset.in&&/^ck-[a-z]+$/.test(b.dataset.in)?b.dataset.in:"pk-"+p),k=inp?inp.value.trim():"";
@@ -661,7 +674,11 @@ function srcOf(){try{const q=new URLSearchParams(location.search);const s=q.get(
   const r=document.referrer?new URL(document.referrer).hostname:"";return r&&r!==location.hostname?r:"direct"}catch(_){return "direct"}}
 function track(event){try{let src=sessionStorage.getItem("saifuban.src");if(!src){src=srcOf();sessionStorage.setItem("saifuban.src",src)}
   fetch(API,{method:"POST",keepalive:true,headers:{"content-type":"application/json"},body:JSON.stringify({action:"track",event,src,lang:LANG})}).catch(()=>{})}catch(_){}}
+// パソコンのQRコードをスマホで読み取って来たとき(#k=合言葉)。アドレスからはすぐ消す
+try{const m=location.hash.match(/^#k=(sbo_[0-9a-f]{48})$/);if(m){history.replaceState(null,"",location.pathname+location.search);const cur=readKey();
+  if(!cur||cur===m[1]){writeKey(m[1]);linked=true}else linkConflict=m[1]}}catch(_){}
 OWNER=readKey();
+if(linked)setTimeout(()=>toast("この端末で使えるようになりました"),600);
 if(OWNER){showApp()}else{setStatus(false,"");showWelcome();try{if(!sessionStorage.getItem("saifuban.v")){sessionStorage.setItem("saifuban.v","1");track("visit")}}catch(_){}}
 checkPush();
 setInterval(()=>{if(OWNER&&document.visibilityState==="visible")load(true)},15000);
