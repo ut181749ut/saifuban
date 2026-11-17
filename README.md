@@ -49,6 +49,8 @@ https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp
 
 Store your OpenAI, Anthropic, Google or OpenRouter key in Saifuban. Your agent only gets a proxy key (`sbk_...`), every call is metered, and requests are refused once the agent's daily (or optional weekly/monthly) budget is reached. Your real key never reaches the agent.
 
+Before each call, the proxy reserves the most it could cost (input size + `max_tokens` × the model's price) and settles to the actual usage when the call ends. Reservations count against the caps together with spend, so parallel calls can't all slip under the line. If a stream is cut before the usage arrives, the reserved amount is recorded instead of zero.
+
 Each agent can also have at most a few API requests in flight at once (4 by default, adjustable). Extra requests get a `429` and the official SDKs retry them automatically, so a runaway loop can't fire hundreds of calls before the budget check catches up.
 
 ### Use it from your agent framework
@@ -155,6 +157,10 @@ API spend is already hard-enforced: when you store your provider API key in Saif
 ## Challenge
 
 Think you can make Saifuban approve more than the budget? A live agent with a ¥100/day budget is open to everyone: https://ut181749ut.github.io/saifuban/challenge.html
+
+### Thanks
+
+- **u/organic-humanoid** pointed out that metered API calls were checked before the call but counted after, so calls already in flight could slip past the cap. That led to reserve-then-settle in the proxy. Thank you!
 
 ## Links
 
