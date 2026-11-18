@@ -2,7 +2,7 @@
 
 Run on 2026-11-18 against the live database functions, inside one transaction that is rolled back at the end. Script: [`day-boundary.sql`](day-boundary.sql).
 
-**Whose timezone:** the day resets at midnight **Japan time (Asia/Tokyo)** for every account. That is 15:00 UTC.
+**Whose timezone:** the owner's. Each account has its own time zone, set from the owner's device the first time they open the site or run the setup command, and changeable in Settings. It defaults to Japan time (Asia/Tokyo). This test uses a Japan-time account; see the [time zone test](timezone.md) for a Los Angeles account next to a Tokyo one.
 
 **Rule:** a call is charged to the day it was **reserved** (started), not the day its callback arrives. A call that starts at 23:59 and ends at 00:01 belongs to the earlier day. That day's budget was the one checked when the call was let through. While the call is still open, its reservation also counts against the new day, so it can't be used to slip extra calls in after midnight.
 

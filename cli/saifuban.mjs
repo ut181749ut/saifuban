@@ -81,6 +81,9 @@ async function main() {
   } else {
     await call("dashboard", {}, owner);
   }
+  // 1日の予算は、この端末の時間帯の0時で区切る(まだ決めていないアカウントだけ)
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })();
+  const tzr = tz ? await call("set_tz", { tz, auto: true }, owner).catch(() => null) : null;
 
   // 2. agent
   const budget = Math.round(Number(flag("budget") || (await ask("Daily budget in yen [1000 ≈ $6.50]: ")) || 1000));
@@ -109,7 +112,8 @@ async function main() {
   rl.close();
 
   // 4. result
-  console.log("\n" + bold("Done.") + ` Agent "${name}" can spend up to ¥${budget.toLocaleString("en-US")} a day.\n`);
+  console.log("\n" + bold("Done.") + ` Agent "${name}" can spend up to ¥${budget.toLocaleString("en-US")} a day` +
+    (tzr && tzr.tz ? ` (resets at midnight, ${tzr.tz}).\n` : ".\n"));
   if (created) {
     console.log(bold("Your Saifuban passphrase") + " (your account; save it in a password manager, don't share it):");
     console.log("  " + owner + "\n");

@@ -335,6 +335,7 @@ const errText=c=>({not_pending:"この申請はもう判断済みか、失効し
 
 function setStatus(ok,text){$("dot").className="dot-i"+(ok?"":" off");$("stat").textContent=text}
 
+const DEVTZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(_){return ""}})();let tzTried=false;
 async function load(quiet){
   if(!OWNER||busy)return;
   const d=await api("dashboard");
@@ -343,6 +344,8 @@ async function load(quiet){
     if(!quiet){$("err").innerHTML=`<b>読み込めません</b><div>${esc(errText(d.error))}</div><div><button id="retry" class="primary">もう一度</button></div>`;$("err").hidden=false}
     setStatus(false,"未接続");return}
   D=d;$("err").hidden=true;
+  // 1日の区切りを、この人の時間帯に合わせる(まだ一度も決めていないときだけ自動で)
+  if(!d.tz_set&&DEVTZ&&!tzTried){tzTried=true;api("set_tz",{tz:DEVTZ,auto:true}).then(r=>{if(r&&r.ok&&r.changed)load(true)}).catch(()=>{})}
   setStatus(true,"接続中");$("clock").textContent=new Date().toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"});
   render();
 }
@@ -606,7 +609,11 @@ function renderSetup(){
   const curCard=`<div class="rule"><div class="head"><b>通貨</b><span class="note">${U?"ドル ($)":"円 (¥)"}</span></div>
       <div class="full note">金額を円とドルのどちらで表示・設定するかを選べます。ドルは1ドル=${esc(RATE())}円で換算します(中身の記録は円のままです)。</div>
       <div class="full row"><button data-cur="JPY"${U?"":' class="primary"'}>円 (¥)</button><button data-cur="USD"${U?' class="primary"':""}>ドル ($)</button></div></div>`;
-  $("tab-setup").innerHTML=curCard+`<div class="rule"><div class="head"><b>通知</b><span class="note">${{on:"オン",off:"オフ",denied:"ブロック中","needs-install":"ホーム画面に追加が必要",unsupported:"非対応",checking:""}[pushState]}</span></div>${pushCard}</div>
+  const TZ=D.tz||"Asia/Tokyo";
+  const tzCard=`<div class="rule"><div class="head"><b>1日の区切り</b><span class="note">${esc(TZ)}</span></div>
+      <div class="full note">1日・1週間・1か月の予算は、この時間帯の0時に区切ります。</div>
+      ${DEVTZ&&DEVTZ!==TZ?`<div class="full row"><button id="tz-here">この端末の時間帯にする: ${esc(DEVTZ)}</button></div>`:""}</div>`;
+  $("tab-setup").innerHTML=curCard+tzCard+`<div class="rule"><div class="head"><b>通知</b><span class="note">${{on:"オン",off:"オフ",denied:"ブロック中","needs-install":"ホーム画面に追加が必要",unsupported:"非対応",checking:""}[pushState]}</span></div>${pushCard}</div>
     <div class="rule"><div class="head"><b>合言葉(アカウント)</b></div>
       <div class="full note">別の端末で開くときや、スマホを替えたときに使います。人に見せないでください。</div>
       <code id="ok-key2" class="full">${esc(OWNER)}</code>
@@ -663,6 +670,7 @@ document.addEventListener("click",async e=>{
   if(b.id==="pk-login"){b.disabled=true;const r=await passkeyLogin();b.disabled=false;
     if(!r.ok||!r.owner_key){toast(PKERR[r.error]||errText(r.error||"server_error"));return}
     OWNER=r.owner_key;writeKey(OWNER);trackOnce("passkey_login");showApp();toast("ログインしました");return}
+  if(b.id==="tz-here")return run("set_tz",{tz:DEVTZ},"時間帯を変えました");
   if(b.id==="pk-add"){b.disabled=true;const r=await passkeyRegister();b.disabled=false;
     if(!r.ok){toast(PKERR[r.error]||errText(r.error||"server_error"));return}
     trackOnce("passkey_added");toast("パスキーを登録しました");pkCount();return}
