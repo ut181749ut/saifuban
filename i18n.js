@@ -195,7 +195,7 @@
     "AIに設定する住所(ベースURL):": "Base URL to set in your AI:",
     "住所をコピー": "Copy URL",
     "1つのキーでClaude・GPT・Gemini・Llamaなど何百種類ものモデルを使えるサービス。迷ったらこれ1つで足ります。実際にかかった金額がそのまま記録されます。": "One key for hundreds of models, including Claude, GPT, Gemini and Llama. If you're not sure, this one is enough. The actual cost is recorded as-is.",
-    "Claude Code に使うときは ANTHROPIC_BASE_URL にこの住所、ANTHROPIC_API_KEY にエージェントキーを設定します。": "For Claude Code, set ANTHROPIC_BASE_URL to this URL and ANTHROPIC_API_KEY to your agent key.",
+    "Claude Code に使うときは ANTHROPIC_BASE_URL にこの住所、ANTHROPIC_AUTH_TOKEN にエージェントキーを設定します(ANTHROPIC_API_KEY だと初回の確認で「いいえ」が既定になっていて、断ると無視されます)。": "For Claude Code, set ANTHROPIC_BASE_URL to this URL and ANTHROPIC_AUTH_TOKEN to your agent key (with ANTHROPIC_API_KEY, Claude Code asks once and defaults to No; a declined key is ignored after that).",
     "OpenAIのSDKやツールでは OPENAI_BASE_URL にこの住所、OPENAI_API_KEY にエージェントキーを設定します。": "For OpenAI SDKs and tools, set OPENAI_BASE_URL to this URL and OPENAI_API_KEY to your agent key.",
     "OpenAI互換の住所です。Google純正のSDKを使う場合は末尾の /v1beta/openai を外してください。": "This is an OpenAI-compatible URL. For Google's own SDK, remove /v1beta/openai from the end.",
     "1日いくらまで(円)": "Daily budget (¥)",

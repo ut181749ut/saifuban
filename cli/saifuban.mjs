@@ -5,6 +5,9 @@
 // optionally stores your provider API key, and prints the two lines to set.
 // No dependencies. Talks only to the Saifuban API.
 import { createInterface } from "node:readline";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 const PROJECT = "https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1";
 const API = process.env.SAIFUBAN_API || PROJECT + "/saifuban-app";
@@ -12,9 +15,11 @@ const SITE = "https://ut181749ut.github.io/saifuban/";
 // APIキー中継(Cloudflare 経由。長い応答も途中で切れない)
 const RELAY = "https://saifuban.saifuban-app.workers.dev/proxy";
 const PROVIDERS = {
-  anthropic: { label: "Anthropic (Claude Code, Anthropic SDK)", env: "ANTHROPIC", base: "/anthropic", keyHint: "sk-ant-…" },
-  openai: { label: "OpenAI (OpenAI SDK, LangChain, CrewAI…)", env: "OPENAI", base: "/openai/v1", keyHint: "sk-…" },
-  openrouter: { label: "OpenRouter (one key, many models)", env: "OPENAI", base: "/openrouter/v1", keyHint: "sk-or-…" },
+  // Claude Code は ANTHROPIC_API_KEY だと初回に「このキーを使う?」と聞き、既定が「いいえ」。Enter で断ると以後黙って無視される。
+  // ANTHROPIC_AUTH_TOKEN なら聞かれずにすぐ使われる(Anthropic SDK もこの変数を読む)
+  anthropic: { label: "Anthropic (Claude Code, Anthropic SDK)", env: "ANTHROPIC", keyVar: "ANTHROPIC_AUTH_TOKEN", base: "/anthropic", keyHint: "sk-ant-…", name: "Claude Code" },
+  openai: { label: "OpenAI (OpenAI SDK, LangChain, CrewAI…)", env: "OPENAI", keyVar: "OPENAI_API_KEY", base: "/openai/v1", keyHint: "sk-…", name: "OpenAI agent" },
+  openrouter: { label: "OpenRouter (one key, many models)", env: "OPENAI", keyVar: "OPENAI_API_KEY", base: "/openrouter/v1", keyHint: "sk-or-…", name: "OpenRouter agent" },
 };
 
 const args = process.argv.slice(2);
@@ -22,11 +27,11 @@ const flag = (name) => { const i = args.indexOf("--" + name); return i >= 0 ? ar
 if (args.includes("--help") || args.includes("-h")) {
   console.log(`Saifuban: a hard daily cap on your AI agent's API bill.
 
-Usage: npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz [--budget 1000] [--provider anthropic|openai|openrouter] [--name "Claude Code"]
+Usage: npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz [--budget 1000] [--provider anthropic|openai|openrouter] [--name "my agent"]
 
   --budget    daily budget in yen (default 1000, about $6.50)
   --provider  which API your agent uses (default anthropic)
-  --name      a name for the agent (default "Claude Code")
+  --name      a name for the agent (default: "Claude Code", "OpenAI agent" or "OpenRouter agent")
 
 Your existing Saifuban passphrase can be passed in SAIFUBAN_OWNER_KEY,
 and your provider API key in SAIFUBAN_PROVIDER_KEY, to skip the prompts.`);
@@ -98,7 +103,6 @@ async function main() {
   // 2. agent
   const budget = Math.round(Number(flag("budget") || (await ask("Daily budget in yen [1000 ≈ $6.50]: ")) || 1000));
   if (!Number.isFinite(budget) || budget < 1) throw new Error("The budget must be a positive number of yen.");
-  const name = (flag("name") || "Claude Code").slice(0, 60);
   let provider = flag("provider");
   if (!provider) {
     console.log("\nWhich API does your agent use?");
@@ -109,6 +113,7 @@ async function main() {
   }
   if (!PROVIDERS[provider]) throw new Error("Unknown provider: " + provider);
   const P = PROVIDERS[provider];
+  const name = (flag("name") || P.name).slice(0, 60);
   const ag = await call("create_agent", { name, per_tx: budget, daily: budget, auto: Math.min(300, budget), merchants: [] }, owner);
   call("track", { event: "agent_created", src: "cli", lang: "en" }).catch(() => {});
 
@@ -119,6 +124,33 @@ async function main() {
     await call("set_provider_key", { provider, key: pkey }, owner);
     call("track", { event: "key_stored", src: "cli", lang: "en" }).catch(() => {});
   }
+  // Claude Code: ~/.claude/settings.json の env に書けば、新しいターミナルでも(バックグラウンドのエージェントでも)ずっと効く
+  let savedTo = "";
+  if (provider === "anthropic" && !args.includes("--no-settings")) {
+    const dir = process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
+    const file = join(dir, "settings.json");
+    const yes = (await ask(`\nSave it to ${file} so Claude Code always uses it (new terminals too)? [Y/n]: `)).toLowerCase();
+    if (!yes.startsWith("n")) {
+      try {
+        let cur = {};
+        if (existsSync(file)) {
+          const txt = readFileSync(file, "utf8");
+          cur = txt.trim() ? JSON.parse(txt) : {};
+          copyFileSync(file, file + ".bak-saifuban");
+        } else mkdirSync(dir, { recursive: true });
+        cur.env = { ...(cur.env || {}), ANTHROPIC_BASE_URL: RELAY + P.base, ANTHROPIC_AUTH_TOKEN: ag.agent_key };
+        // 本物のキーが残っていると、そちらが先に使われて中継で断られる
+        if (cur.env.ANTHROPIC_API_KEY && !String(cur.env.ANTHROPIC_API_KEY).startsWith("sbk_")) {
+          delete cur.env.ANTHROPIC_API_KEY;
+          console.log(dim("  Removed your real ANTHROPIC_API_KEY from that file's env (it's still in the backup), so it can't bypass the cap."));
+        }
+        writeFileSync(file, JSON.stringify(cur, null, 2) + "\n");
+        savedTo = file;
+      } catch (e) {
+        console.log(dim(`  Couldn't update ${file} (${e.message}). Set the lines below by hand instead.`));
+      }
+    }
+  }
   rl.close();
 
   // 4. result
@@ -128,19 +160,27 @@ async function main() {
     console.log(bold("Your Saifuban passphrase") + " (your account; save it in a password manager, don't share it):");
     console.log("  " + owner + "\n");
   }
-  console.log(bold("Set these two lines") + " in the shell where your agent runs:\n");
+  const KV = P.keyVar;
+  if (savedTo) {
+    console.log(bold("Saved") + ` to ${savedTo}. Start a new Claude Code session and it goes through Saifuban.`);
+    console.log(dim(`  (The old file is kept as settings.json.bak-saifuban. To stop using Saifuban, remove ANTHROPIC_BASE_URL and ${KV} from "env".)\n`));
+    console.log("For other tools (Anthropic SDK, scripts), set these two lines in the shell:\n");
+  } else {
+    console.log(bold("Set these two lines") + " in the shell where your agent runs:\n");
+  }
   if (process.platform === "win32") {
     // Windows: PowerShell と コマンドプロンプト の両方の書き方を出す
     console.log(dim("  PowerShell:"));
     console.log(`  $env:${P.env}_BASE_URL="${RELAY}${P.base}"`);
-    console.log(`  $env:${P.env}_API_KEY="${ag.agent_key}"\n`);
+    console.log(`  $env:${KV}="${ag.agent_key}"\n`);
     console.log(dim("  Command Prompt (cmd):"));
     console.log(`  set ${P.env}_BASE_URL=${RELAY}${P.base}`);
-    console.log(`  set ${P.env}_API_KEY=${ag.agent_key}\n`);
+    console.log(`  set ${KV}=${ag.agent_key}\n`);
   } else {
     console.log(`  export ${P.env}_BASE_URL="${RELAY}${P.base}"`);
-    console.log(`  export ${P.env}_API_KEY="${ag.agent_key}"\n`);
+    console.log(`  export ${KV}="${ag.agent_key}"\n`);
   }
+  if (provider === "anthropic") console.log(dim("If ANTHROPIC_API_KEY (your real key) is also set in that shell, unset it, or it gets used instead.\n"));
   if (!pkey) console.log(dim(`Add your ${provider} API key in Settings on ${SITE} before the first call.\n`));
   console.log(`Watch spending, change the budget and approve payments at ${SITE}`);
   console.log(dim("(open it, choose \"I already use it on another device\" and paste the passphrase; you can add a passkey there too)\n"));

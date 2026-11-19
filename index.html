@@ -396,7 +396,7 @@ function showWelcome(reason){
     w.innerHTML=`<div class="wtext"><h2>AIエージェントのAPI代に、確実な上限を</h2>
     <p class="note">Claude Code・OpenAI SDK・LangChain・CrewAIなどで、接続先とキーを差し替えるだけ。1日・週・月の予算に達したら、財布番がリクエストを止めます。本物のAPIキーはAIに渡りません。</p>
     <code class="urlbox">${setv("ANTHROPIC_BASE_URL",RELAY+"/anthropic")}
-${setv("ANTHROPIC_API_KEY","sbk_…")}</code>
+${setv("ANTHROPIC_AUTH_TOKEN","sbk_…")}</code>
     <ol class="note steps"><li>はじめる(メール登録なし・無料)</li><li>AIを1つ作って、エージェントキー(sbk_…)を受け取る</li><li>「設定」でAPIキーを預けて、上の2行を設定する</li></ol>
     <p class="note">ターミナルなら1行で、登録・AI作成・キー預けまで:</p><code id="npx" class="urlbox">${WIN?"npx.cmd":"npx"} https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz</code><div class="row"><button data-copy="npx">コマンドをコピー</button></div>
     ${invalid}
@@ -589,7 +589,7 @@ const API_SETUP=[
   {p:"openrouter",label:"OpenRouter",env:"OPENAI",note:"OpenRouterのキーを預けると、OpenAI互換のツールからClaude・GPT・Geminiなどを使えます。かかった金額がそのまま記録されます。"}];
 const PROV={
   openrouter:{label:"OpenRouter",ph:"sk-or-v1-...",base:"/openrouter/v1",hint:"1つのキーでClaude・GPT・Gemini・Llamaなど何百種類ものモデルを使えるサービス。迷ったらこれ1つで足ります。実際にかかった金額がそのまま記録されます。"},
-  anthropic:{label:"Anthropic API",ph:"sk-ant-...",base:"/anthropic",hint:"Claude Code に使うときは ANTHROPIC_BASE_URL にこの住所、ANTHROPIC_API_KEY にエージェントキーを設定します。"},
+  anthropic:{label:"Anthropic API",ph:"sk-ant-...",base:"/anthropic",hint:"Claude Code に使うときは ANTHROPIC_BASE_URL にこの住所、ANTHROPIC_AUTH_TOKEN にエージェントキーを設定します(ANTHROPIC_API_KEY だと初回の確認で「いいえ」が既定になっていて、断ると無視されます)。"},
   openai:{label:"OpenAI API",ph:"sk-...",base:"/openai/v1",hint:"OpenAIのSDKやツールでは OPENAI_BASE_URL にこの住所、OPENAI_API_KEY にエージェントキーを設定します。"},
   google:{label:"Google Gemini API",ph:"AIza...",base:"/google/v1beta/openai",hint:"OpenAI互換の住所です。Google純正のSDKを使う場合は末尾の /v1beta/openai を外してください。"}};
 
