@@ -7,5 +7,6 @@
   "engines": { "node": ">=18" },
   "homepage": "https://ut181749ut.github.io/saifuban/",
   "repository": "github:ut181749ut/saifuban",
+  "license": "MIT",
   "private": true
 }
