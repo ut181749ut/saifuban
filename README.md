@@ -40,6 +40,10 @@ Claude Codeを使っているなら、Claude Codeの中で2行打つだけです
 
 (予算は `/saifuban:setup 1500円` のように付けられます。付けなければ1日1,000円で、あとから管理画面で変えられます)
 
+このプラグインには買い物の承認も入っています。初めて使うときに `/mcp` で saifuban を選んで「許可する」を押すだけです(はじめての人は、その画面でアカウントも自動で作られます)。
+
+ClaudeやChatGPTの画面で使う場合も、コネクタに下のURLを登録して「許可する」を押すだけです。
+
 ターミナルからなら1行です: `npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`(WindowsのPowerShellでは `npx.cmd`)。手元に入っているAPIキーを見つけて使うか聞いてくれます。お金をかけずに試すなら、Geminiの無料APIキー([aistudio.google.com/apikey](https://aistudio.google.com/apikey))で「Google Gemini」を選んでください。
 
 1. サイトで「はじめる」→ 予算を選ぶ → AI用のURLが出る
@@ -82,7 +86,7 @@ Each agent can also have at most a few API requests in flight at once (8 by defa
 
 (Add a budget like `/saifuban:setup 10` for $10/day; the default is $7. On Claude Code older than v2.1.275, add the marketplace first with `/plugin marketplace add ut181749ut/saifuban`, then `/plugin install saifuban@saifuban`.)
 
-It creates your account and an agent with a daily cap, stores the Anthropic key that's already in your environment (you never paste it into the chat), checks the key works through the proxy, writes `~/.claude/settings.json`, and opens your dashboard already signed in. Restart Claude Code and every call goes through the cap.
+It creates your account and an agent with a daily cap, stores the Anthropic key that's already in your environment (you never paste it into the chat), checks the key works through the proxy, writes `~/.claude/settings.json`, and opens your dashboard already signed in. Restart Claude Code and every call goes through the cap. The plugin also connects Saifuban's payment approvals, so Claude asks before buying anything: the first time, run `/mcp`, pick `saifuban` and press Allow (new users get an account with a daily budget on that same page).
 
 **Or from the terminal**, one command:
 

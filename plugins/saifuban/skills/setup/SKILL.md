@@ -25,4 +25,5 @@ Set up Saifuban (an open-source proxy that stops API calls once a daily budget i
    - for `anthropic`: that the cap applies from the next Claude Code session, so they should restart Claude Code.
    Don't repeat the agent key (sbk_…), the dashboard link or the passphrase in chat; they're secrets and are already saved on this machine and opened in the browser.
    If the output says no Anthropic API key was stored, explain that Saifuban caps API-key usage, so Claude Code's settings were left alone. If they use Claude Code with a Pro/Max subscription, they aren't billed per call and don't need this; if they do use an API key, they can add it on the dashboard and run `/saifuban:setup` again.
+   Also mention, in one line: the plugin also lets Claude ask Saifuban before buying anything; the first time that's used, Claude Code asks them to sign in to the `saifuban` server (run `/mcp`, pick saifuban, then Allow).
 5. If the command fails, show the error line and suggest the manual route: https://github.com/ut181749ut/saifuban#readme

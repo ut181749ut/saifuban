@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "saifuban": {
+      "type": "http",
+      "url": "https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp"
+    }
+  }
+}
