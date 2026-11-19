@@ -69,12 +69,19 @@ async function main() {
   console.log(bold("\nSaifuban") + " — a hard daily cap on your AI agent's API bill\n");
 
   // 1. account
-  let owner = process.env.SAIFUBAN_OWNER_KEY || "";
-  if (!owner) {
-    const a = await ask("Already have a Saifuban passphrase (sbo_…)? Paste it, or press Enter to create a new account: ", true);
-    owner = a;
+  // 貼り付けたときに前後の空白・引用符・端末の制御文字が混ざっても、合言葉の部分だけを取り出す
+  const pick = (v) => (String(v || "").match(/sbo_[0-9a-f]{48}/i)?.[0] || "").toLowerCase();
+  let owner = pick(process.env.SAIFUBAN_OWNER_KEY);
+  if (!owner && process.env.SAIFUBAN_OWNER_KEY) throw new Error("SAIFUBAN_OWNER_KEY doesn't look like a Saifuban passphrase (sbo_ + 48 hex characters).");
+  for (let tries = 0; !owner && tries < 3; tries++) {
+    const a = await ask(tries === 0
+      ? "Already have a Saifuban passphrase (sbo_…)? Paste it (it stays hidden), or press Enter to create a new account: "
+      : "Paste the passphrase again (sbo_ + 48 letters/numbers), or press Enter to create a new account: ", true);
+    if (!a.trim()) break;
+    owner = pick(a);
+    if (!owner) console.log(dim(`  That wasn't a passphrase (got ${a.trim().length} characters, expected 52 starting with sbo_). You can copy it from Settings on ${SITE}`));
   }
-  if (owner && !/^sbo_[0-9a-f]{48}$/.test(owner)) throw new Error("That doesn't look like a Saifuban passphrase (sbo_ + 48 hex characters).");
+  if (!owner && closed) { /* 入力が終わった(パイプ)ときは新規作成に進む */ }
   let created = false;
   if (!owner) {
     const r = await call("signup");
