@@ -8,6 +8,9 @@ import { createInterface } from "node:readline";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 
 const PROJECT = "https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1";
 const API = process.env.SAIFUBAN_API || PROJECT + "/saifuban-app";
@@ -23,6 +26,28 @@ const PROVIDERS = {
 };
 
 const args = process.argv.slice(2);
+
+// npx は一度ダウンロードしたものを使い回すので、古い版が動くことがある。
+// 起動時に GitHub の最新版と比べ、違っていれば最新版を動かす(この CLI は1ファイルで依存なし)
+async function runLatestIfOutdated() {
+  if (process.env.SAIFUBAN_NO_UPDATE) return;
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 4000);
+    const r = await fetch(process.env.SAIFUBAN_CLI_URL || "https://raw.githubusercontent.com/ut181749ut/saifuban/main/cli/saifuban.mjs", { signal: ctl.signal });
+    clearTimeout(t);
+    if (!r.ok) return;
+    const latest = await r.text();
+    if (!latest.startsWith("#!/usr/bin/env node") || !latest.includes("Saifuban setup in one command")) return;
+    const mine = readFileSync(fileURLToPath(import.meta.url), "utf8");
+    if (latest.replace(/\r\n/g, "\n") === mine.replace(/\r\n/g, "\n")) return;
+    const f = join(tmpdir(), "saifuban-latest.mjs");
+    writeFileSync(f, latest);
+    const res = spawnSync(process.execPath, [f, ...args], { stdio: "inherit", env: { ...process.env, SAIFUBAN_NO_UPDATE: "1" } });
+    process.exit(res.status ?? 1);
+  } catch { /* オフラインなどのときは、手元の版でそのまま進む */ }
+}
+await runLatestIfOutdated();
 const flag = (name) => { const i = args.indexOf("--" + name); return i >= 0 ? args[i + 1] : undefined; };
 if (args.includes("--help") || args.includes("-h")) {
   console.log(`Saifuban: a hard daily cap on your AI agent's API bill.
