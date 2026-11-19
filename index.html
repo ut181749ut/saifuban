@@ -245,6 +245,8 @@ a.btn.primary{background:var(--ink);color:var(--paper)}
 <script>
 const PROJECT="zrphnuvrsldcycxtdftv";
 const FN="https://"+PROJECT+".supabase.co/functions/v1";
+// APIキー中継の住所(Cloudflare 経由。何分かかる長い応答も途中で切れない)
+const RELAY="https://saifuban.saifuban-app.workers.dev/proxy";
 const API=FN+"/saifuban-app";
 const KEY_STORE="saifuban.owner";
 let guideAI="claude", guideDone={}, guideFor=null;
@@ -390,7 +392,7 @@ function showWelcome(reason){
   if(devVisit()){
     w.innerHTML=`<div class="wtext"><h2>AIエージェントのAPI代に、確実な上限を</h2>
     <p class="note">Claude Code・OpenAI SDK・LangChain・CrewAIなどで、接続先とキーを差し替えるだけ。1日・週・月の予算に達したら、財布番がリクエストを止めます。本物のAPIキーはAIに渡りません。</p>
-    <code class="urlbox">export ANTHROPIC_BASE_URL="${FN}/saifuban-proxy/anthropic"
+    <code class="urlbox">export ANTHROPIC_BASE_URL="${RELAY}/anthropic"
 export ANTHROPIC_API_KEY="sbk_…"</code>
     <ol class="note steps"><li>はじめる(メール登録なし・無料)</li><li>AIを1つ作って、エージェントキー(sbk_…)を受け取る</li><li>「設定」でAPIキーを預けて、上の2行を設定する</li></ol>
     <p class="note">ターミナルなら1行で、登録・AI作成・キー預けまで:</p><code id="npx" class="urlbox">npx github:ut181749ut/saifuban</code><div class="row"><button data-copy="npx">コマンドをコピー</button></div>
@@ -536,7 +538,7 @@ function renderTop(){
       <div class="seg" role="tablist" aria-label="使っているツール">${API_SETUP.map(x=>`<button class="segb" data-apip="${x.p}" aria-selected="${apiP===x.p}">${x.label}</button>`).join("")}</div>
       <ol class="guide">
         ${dstep(1,`本物の${PROV[AP.p].label}キーを預ける`,held?`<div class="note">預かり中 ${esc(held)}</div>`:`<div class="note">財布番が暗号化して保管します。AIには渡りません。</div><label>APIキー<input id="ck-${AP.p}" type="password" autocomplete="off" placeholder="${PROV[AP.p].ph}"></label><div class="row"><button data-pkey="${AP.p}" data-in="ck-${AP.p}" class="primary">預ける</button></div>`)}
-        ${dstep(2,"この2行を設定する",`<code id="env" class="urlbox">export ${AP.env}_BASE_URL="${FN}${PROV[AP.p].base}"
+        ${dstep(2,"この2行を設定する",`<code id="env" class="urlbox">export ${AP.env}_BASE_URL="${RELAY}${PROV[AP.p].base}"
 export ${AP.env}_API_KEY="${esc(newKey.key)}"</code><div class="row"><button data-copy="env" class="primary">コピー</button></div><div class="note">${AP.note}</div>`)}
         ${dstep(3,"いつも通り使う",`<div class="note">${nag?`1日${money(nag.daily)}`:"1日の予算"}に達したら、財布番がリクエストを止めます。予算・週・月の上限は「AIとルール」で変えられます。</div>`)}
       </ol>
@@ -583,10 +585,10 @@ const API_SETUP=[
   {p:"openai",label:"OpenAI SDK",env:"OPENAI",note:"OpenAI SDK・LangChain・CrewAIなど、OPENAI_BASE_URL を読むツールで使えます。"},
   {p:"openrouter",label:"OpenRouter",env:"OPENAI",note:"OpenRouterのキーを預けると、OpenAI互換のツールからClaude・GPT・Geminiなどを使えます。かかった金額がそのまま記録されます。"}];
 const PROV={
-  openrouter:{label:"OpenRouter",ph:"sk-or-v1-...",base:"/saifuban-proxy/openrouter/v1",hint:"1つのキーでClaude・GPT・Gemini・Llamaなど何百種類ものモデルを使えるサービス。迷ったらこれ1つで足ります。実際にかかった金額がそのまま記録されます。"},
-  anthropic:{label:"Anthropic API",ph:"sk-ant-...",base:"/saifuban-proxy/anthropic",hint:"Claude Code に使うときは ANTHROPIC_BASE_URL にこの住所、ANTHROPIC_API_KEY にエージェントキーを設定します。"},
-  openai:{label:"OpenAI API",ph:"sk-...",base:"/saifuban-proxy/openai/v1",hint:"OpenAIのSDKやツールでは OPENAI_BASE_URL にこの住所、OPENAI_API_KEY にエージェントキーを設定します。"},
-  google:{label:"Google Gemini API",ph:"AIza...",base:"/saifuban-proxy/google/v1beta/openai",hint:"OpenAI互換の住所です。Google純正のSDKを使う場合は末尾の /v1beta/openai を外してください。"}};
+  openrouter:{label:"OpenRouter",ph:"sk-or-v1-...",base:"/openrouter/v1",hint:"1つのキーでClaude・GPT・Gemini・Llamaなど何百種類ものモデルを使えるサービス。迷ったらこれ1つで足ります。実際にかかった金額がそのまま記録されます。"},
+  anthropic:{label:"Anthropic API",ph:"sk-ant-...",base:"/anthropic",hint:"Claude Code に使うときは ANTHROPIC_BASE_URL にこの住所、ANTHROPIC_API_KEY にエージェントキーを設定します。"},
+  openai:{label:"OpenAI API",ph:"sk-...",base:"/openai/v1",hint:"OpenAIのSDKやツールでは OPENAI_BASE_URL にこの住所、OPENAI_API_KEY にエージェントキーを設定します。"},
+  google:{label:"Google Gemini API",ph:"AIza...",base:"/google/v1beta/openai",hint:"OpenAI互換の住所です。Google純正のSDKを使う場合は末尾の /v1beta/openai を外してください。"}};
 
 function renderSetup(){
   if(!D)return;
@@ -603,7 +605,7 @@ function renderSetup(){
       <label class="full">${h?"新しいキーに差し替える":"本物のAPIキーを預ける"}<input id="pk-${p}" type="password" autocomplete="off" placeholder="${v.ph}"></label>
       <div class="full row"><button data-pkey="${p}" class="primary">保存</button>${h?`<button data-pkeyoff="${p}" class="danger">預けるのをやめる</button>`:""}</div>
       <div class="full note">AIに設定する住所(ベースURL):</div>
-      <code id="base-${p}" class="full">${FN}${v.base}</code>
+      <code id="base-${p}" class="full">${RELAY}${v.base}</code>
       <div class="full row"><button data-copy="base-${p}">住所をコピー</button></div></div>`}).join("");
   const U=CURX()==="USD";
   const curCard=`<div class="rule"><div class="head"><b>通貨</b><span class="note">${U?"ドル ($)":"円 (¥)"}</span></div>

@@ -8,10 +8,12 @@ import { createInterface } from "node:readline";
 const PROJECT = "https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1";
 const API = process.env.SAIFUBAN_API || PROJECT + "/saifuban-app";
 const SITE = "https://ut181749ut.github.io/saifuban/";
+// APIキー中継(Cloudflare 経由。長い応答も途中で切れない)
+const RELAY = "https://saifuban.saifuban-app.workers.dev/proxy";
 const PROVIDERS = {
-  anthropic: { label: "Anthropic (Claude Code, Anthropic SDK)", env: "ANTHROPIC", base: "/saifuban-proxy/anthropic", keyHint: "sk-ant-…" },
-  openai: { label: "OpenAI (OpenAI SDK, LangChain, CrewAI…)", env: "OPENAI", base: "/saifuban-proxy/openai/v1", keyHint: "sk-…" },
-  openrouter: { label: "OpenRouter (one key, many models)", env: "OPENAI", base: "/saifuban-proxy/openrouter/v1", keyHint: "sk-or-…" },
+  anthropic: { label: "Anthropic (Claude Code, Anthropic SDK)", env: "ANTHROPIC", base: "/anthropic", keyHint: "sk-ant-…" },
+  openai: { label: "OpenAI (OpenAI SDK, LangChain, CrewAI…)", env: "OPENAI", base: "/openai/v1", keyHint: "sk-…" },
+  openrouter: { label: "OpenRouter (one key, many models)", env: "OPENAI", base: "/openrouter/v1", keyHint: "sk-or-…" },
 };
 
 const args = process.argv.slice(2);
@@ -119,7 +121,7 @@ async function main() {
     console.log("  " + owner + "\n");
   }
   console.log(bold("Set these two lines") + " in the shell where your agent runs:\n");
-  console.log(`  export ${P.env}_BASE_URL="${PROJECT}${P.base}"`);
+  console.log(`  export ${P.env}_BASE_URL="${RELAY}${P.base}"`);
   console.log(`  export ${P.env}_API_KEY="${ag.agent_key}"\n`);
   if (!pkey) console.log(dim(`Add your ${provider} API key in Settings on ${SITE} before the first call.\n`));
   console.log(`Watch spending, change the budget and approve payments at ${SITE}`);

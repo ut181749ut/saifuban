@@ -51,7 +51,7 @@ https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp
 
 Store your OpenAI, Anthropic, Google or OpenRouter key in Saifuban. Your agent only gets a proxy key (`sbk_...`), every call is metered, and requests are refused once the agent's daily (or optional weekly/monthly) budget is reached. Your real key never reaches the agent.
 
-Before each call, the proxy reserves the most it could cost (input size + `max_tokens` × the model's price) and settles to the actual usage when the call ends. Reservations count against the caps together with spend, so parallel calls can't all slip under the line. If a stream is cut before the usage arrives, the reserved amount is recorded instead of zero. Each reservation is settled exactly once: a retried or late settle can't charge twice, and a reservation whose settle never arrives is charged at its reserved amount after 10 minutes (and corrected if the real usage shows up later). See the [reserve → settle → release test](tests/reserve-settle-release.md). Days reset at midnight in the owner's own time zone (taken from their device, changeable in Settings), and a call is charged to the day it started, so a call from 23:59 to 00:01 stays on the earlier day ([day boundary test](tests/day-boundary.md)).
+Before each call, the proxy reserves the most it could cost (input size + `max_tokens` × the model's price) and settles to the actual usage when the call ends. Reservations count against the caps together with spend, so parallel calls can't all slip under the line. If a stream is cut before the usage arrives, the reserved amount is recorded instead of zero. Each reservation is settled exactly once: a retried or late settle can't charge twice, and a reservation whose settle never arrives is charged at its reserved amount after 10 minutes (and corrected if the real usage shows up later). See the [reserve → settle → release test](tests/reserve-settle-release.md). Days reset at midnight in the owner's own time zone (taken from their device, changeable in Settings), and a call is charged to the day it started, so a call from 23:59 to 00:01 stays on the earlier day ([day boundary test](tests/day-boundary.md)). Web searches and other per-call tool fees are counted too, prices and the exchange rate update daily, and a model missing from the price list is charged at that provider's highest price. The proxy runs on Cloudflare, so responses that take several minutes stream to the end (the older `https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/...` address still works, but cuts responses at 150 seconds).
 
 Each agent can also have at most a few API requests in flight at once (4 by default, adjustable). Extra requests get a `429` and the official SDKs retry them automatically, so a runaway loop can't fire hundreds of calls before the budget check catches up.
 
@@ -68,7 +68,7 @@ Point the client at the Saifuban proxy and give it the agent's proxy key. Nothin
 
 **Claude Code**
 ```bash
-export ANTHROPIC_BASE_URL="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/anthropic"
+export ANTHROPIC_BASE_URL="https://saifuban.saifuban-app.workers.dev/proxy/anthropic"
 export ANTHROPIC_API_KEY="sbk_..."
 ```
 
@@ -78,7 +78,7 @@ from openai import AsyncOpenAI
 from agents import set_default_openai_client
 
 set_default_openai_client(AsyncOpenAI(
-    base_url="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openai/v1",
+    base_url="https://saifuban.saifuban-app.workers.dev/proxy/openai/v1",
     api_key="sbk_...",
 ))
 ```
@@ -88,25 +88,25 @@ set_default_openai_client(AsyncOpenAI(
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 
-gpt = ChatOpenAI(model="gpt-4o-mini", base_url="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openai/v1", api_key="sbk_...")
-claude = ChatAnthropic(model="claude-sonnet-4-5", base_url="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/anthropic", api_key="sbk_...")
+gpt = ChatOpenAI(model="gpt-4o-mini", base_url="https://saifuban.saifuban-app.workers.dev/proxy/openai/v1", api_key="sbk_...")
+claude = ChatAnthropic(model="claude-sonnet-4-5", base_url="https://saifuban.saifuban-app.workers.dev/proxy/anthropic", api_key="sbk_...")
 ```
 
 **CrewAI**
 ```python
 from crewai import LLM
 
-llm = LLM(model="openai/gpt-4o-mini", base_url="https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openai/v1", api_key="sbk_...")
+llm = LLM(model="openai/gpt-4o-mini", base_url="https://saifuban.saifuban-app.workers.dev/proxy/openai/v1", api_key="sbk_...")
 ```
 
 **Vercel AI SDK**
 ```ts
 import { createOpenAI } from "@ai-sdk/openai";
 
-const openai = createOpenAI({ baseURL: "https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openai/v1", apiKey: "sbk_..." });
+const openai = createOpenAI({ baseURL: "https://saifuban.saifuban-app.workers.dev/proxy/openai/v1", apiKey: "sbk_..." });
 ```
 
-**OpenRouter** (hundreds of models, actual cost reported per call): base URL `https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/openrouter/v1`. **Gemini**: `https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/google/v1beta/openai` (OpenAI-compatible).
+**OpenRouter** (hundreds of models, actual cost reported per call): base URL `https://saifuban.saifuban-app.workers.dev/proxy/openrouter/v1`. **Gemini**: `https://saifuban.saifuban-app.workers.dev/proxy/google/v1beta/openai` (OpenAI-compatible).
 
 ### Phone approval for everything else
 
