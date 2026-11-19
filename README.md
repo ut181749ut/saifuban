@@ -29,7 +29,7 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 
 ### 使い方
 
-ターミナルからなら1行で始められます(登録・AI作成・APIキー預けまで): `npx github:ut181749ut/saifuban`
+ターミナルからなら1行で始められます(登録・AI作成・APIキー預けまで): `npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`(WindowsのPowerShellでは `npx.cmd https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`)
 
 1. サイトで「はじめる」→ 予算を選ぶ → AI用のURLが出る
 2. そのURLをAIに登録(Claude: コネクタ / ChatGPT: 開発者モードのアプリ / Muse: チャットでURLを送る / Cursor・VS Code: MCP設定)
@@ -60,8 +60,10 @@ Each agent can also have at most a few API requests in flight at once (4 by defa
 Or set everything up from the terminal in one command (account, agent with a daily budget, API key):
 
 ```bash
-npx github:ut181749ut/saifuban
+npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
 ```
+
+On Windows PowerShell use `npx.cmd` instead of `npx`. Git doesn't need to be installed.
 
 
 Point the client at the Saifuban proxy and give it the agent's proxy key. Nothing else changes.

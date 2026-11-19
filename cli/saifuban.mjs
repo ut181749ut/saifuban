@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Saifuban setup in one command:  npx github:ut181749ut/saifuban
+// Saifuban setup in one command:  npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
+// (Windows PowerShell: npx.cmd https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz)
 // Creates (or reuses) your Saifuban account, makes an agent with a daily budget,
 // optionally stores your provider API key, and prints the two lines to set.
 // No dependencies. Talks only to the Saifuban API.
@@ -21,7 +22,7 @@ const flag = (name) => { const i = args.indexOf("--" + name); return i >= 0 ? ar
 if (args.includes("--help") || args.includes("-h")) {
   console.log(`Saifuban: a hard daily cap on your AI agent's API bill.
 
-Usage: npx github:ut181749ut/saifuban [--budget 1000] [--provider anthropic|openai|openrouter] [--name "Claude Code"]
+Usage: npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz [--budget 1000] [--provider anthropic|openai|openrouter] [--name "Claude Code"]
 
   --budget    daily budget in yen (default 1000, about $6.50)
   --provider  which API your agent uses (default anthropic)
@@ -121,8 +122,18 @@ async function main() {
     console.log("  " + owner + "\n");
   }
   console.log(bold("Set these two lines") + " in the shell where your agent runs:\n");
-  console.log(`  export ${P.env}_BASE_URL="${RELAY}${P.base}"`);
-  console.log(`  export ${P.env}_API_KEY="${ag.agent_key}"\n`);
+  if (process.platform === "win32") {
+    // Windows: PowerShell と コマンドプロンプト の両方の書き方を出す
+    console.log(dim("  PowerShell:"));
+    console.log(`  $env:${P.env}_BASE_URL="${RELAY}${P.base}"`);
+    console.log(`  $env:${P.env}_API_KEY="${ag.agent_key}"\n`);
+    console.log(dim("  Command Prompt (cmd):"));
+    console.log(`  set ${P.env}_BASE_URL=${RELAY}${P.base}`);
+    console.log(`  set ${P.env}_API_KEY=${ag.agent_key}\n`);
+  } else {
+    console.log(`  export ${P.env}_BASE_URL="${RELAY}${P.base}"`);
+    console.log(`  export ${P.env}_API_KEY="${ag.agent_key}"\n`);
+  }
   if (!pkey) console.log(dim(`Add your ${provider} API key in Settings on ${SITE} before the first call.\n`));
   console.log(`Watch spending, change the budget and approve payments at ${SITE}`);
   console.log(dim("(open it, choose \"I already use it on another device\" and paste the passphrase; you can add a passkey there too)\n"));

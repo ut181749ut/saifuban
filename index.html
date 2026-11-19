@@ -247,6 +247,9 @@ const PROJECT="zrphnuvrsldcycxtdftv";
 const FN="https://"+PROJECT+".supabase.co/functions/v1";
 // APIキー中継の住所(Cloudflare 経由。何分かかる長い応答も途中で切れない)
 const RELAY="https://saifuban.saifuban-app.workers.dev/proxy";
+// Windows ではPowerShell用の書き方で出す($env:NAME="...")
+const WIN=/Windows/i.test(navigator.userAgent);
+const setv=(n,v)=>WIN?`$env:${n}="${v}"`:`export ${n}="${v}"`;
 const API=FN+"/saifuban-app";
 const KEY_STORE="saifuban.owner";
 let guideAI="claude", guideDone={}, guideFor=null;
@@ -392,10 +395,10 @@ function showWelcome(reason){
   if(devVisit()){
     w.innerHTML=`<div class="wtext"><h2>AIエージェントのAPI代に、確実な上限を</h2>
     <p class="note">Claude Code・OpenAI SDK・LangChain・CrewAIなどで、接続先とキーを差し替えるだけ。1日・週・月の予算に達したら、財布番がリクエストを止めます。本物のAPIキーはAIに渡りません。</p>
-    <code class="urlbox">export ANTHROPIC_BASE_URL="${RELAY}/anthropic"
-export ANTHROPIC_API_KEY="sbk_…"</code>
+    <code class="urlbox">${setv("ANTHROPIC_BASE_URL",RELAY+"/anthropic")}
+${setv("ANTHROPIC_API_KEY","sbk_…")}</code>
     <ol class="note steps"><li>はじめる(メール登録なし・無料)</li><li>AIを1つ作って、エージェントキー(sbk_…)を受け取る</li><li>「設定」でAPIキーを預けて、上の2行を設定する</li></ol>
-    <p class="note">ターミナルなら1行で、登録・AI作成・キー預けまで:</p><code id="npx" class="urlbox">npx github:ut181749ut/saifuban</code><div class="row"><button data-copy="npx">コマンドをコピー</button></div>
+    <p class="note">ターミナルなら1行で、登録・AI作成・キー預けまで:</p><code id="npx" class="urlbox">${WIN?"npx.cmd":"npx"} https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz</code><div class="row"><button data-copy="npx">コマンドをコピー</button></div>
     ${invalid}
     ${iosTip}<div class="row"><button id="signup" class="primary big">はじめる(無料)</button><a class="btn" style="color:inherit;text-decoration:none" href="challenge.html?src=site">上限を破れるか試す</a></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。</div>${hasPasskey()?`<div class="row"><button id="pk-login">パスキーでログイン</button><span class="note">すでに使っていて、パスキーを登録した人</span></div>`:""}</div>
     <div class="wmedia">${LANG==="en"?`<video class="demo" src="api-en.mp4" autoplay muted loop playsinline preload="metadata"></video>`:`<img class="demo" src="api-ja.gif" alt="AIがループしても、1日の予算でAPIの呼び出しが止まる様子">`}</div>
@@ -538,8 +541,8 @@ function renderTop(){
       <div class="seg" role="tablist" aria-label="使っているツール">${API_SETUP.map(x=>`<button class="segb" data-apip="${x.p}" aria-selected="${apiP===x.p}">${x.label}</button>`).join("")}</div>
       <ol class="guide">
         ${dstep(1,`本物の${PROV[AP.p].label}キーを預ける`,held?`<div class="note">預かり中 ${esc(held)}</div>`:`<div class="note">財布番が暗号化して保管します。AIには渡りません。</div><label>APIキー<input id="ck-${AP.p}" type="password" autocomplete="off" placeholder="${PROV[AP.p].ph}"></label><div class="row"><button data-pkey="${AP.p}" data-in="ck-${AP.p}" class="primary">預ける</button></div>`)}
-        ${dstep(2,"この2行を設定する",`<code id="env" class="urlbox">export ${AP.env}_BASE_URL="${RELAY}${PROV[AP.p].base}"
-export ${AP.env}_API_KEY="${esc(newKey.key)}"</code><div class="row"><button data-copy="env" class="primary">コピー</button></div><div class="note">${AP.note}</div>`)}
+        ${dstep(2,"この2行を設定する",`<code id="env" class="urlbox">${setv(AP.env+"_BASE_URL",RELAY+PROV[AP.p].base)}
+${setv(AP.env+"_API_KEY",esc(newKey.key))}</code><div class="row"><button data-copy="env" class="primary">コピー</button></div><div class="note">${AP.note}</div>`)}
         ${dstep(3,"いつも通り使う",`<div class="note">${nag?`1日${money(nag.daily)}`:"1日の予算"}に達したら、財布番がリクエストを止めます。予算・週・月の上限は「AIとルール」で変えられます。</div>`)}
       </ol>
       <div class="note">このキーはこの画面を閉じると二度と表示されません。人に見せないでください(なくしたら作り直せます)。</div>
