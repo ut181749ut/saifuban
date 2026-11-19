@@ -1,0 +1,15 @@
+{
+  "name": "saifuban",
+  "description": "Saifuban: a hard daily spending cap for Claude Code and other AI agents",
+  "owner": {
+    "name": "ut181749ut",
+    "url": "https://github.com/ut181749ut/saifuban"
+  },
+  "plugins": [
+    {
+      "name": "saifuban",
+      "source": "./plugins/saifuban",
+      "description": "Put a hard daily spending cap on Claude Code's API usage in one step"
+    }
+  ]
+}

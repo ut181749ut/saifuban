@@ -31,7 +31,15 @@ APIキーを他人のサーバーに預けたくない場合は、全部を自�
 
 ### 使い方
 
-ターミナルからなら1行で始められます(登録・AI作成・APIキー預けまで): `npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`(WindowsのPowerShellでは `npx.cmd https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`)
+Claude Codeを使っているなら、Claude Codeの中で3行打つだけです(登録・AI作成・APIキー預け・設定まで全部やります。APIキーをチャットに貼る必要はありません):
+
+```
+/plugin marketplace add ut181749ut/saifuban
+/plugin install saifuban@saifuban
+/saifuban:setup 1000円
+```
+
+ターミナルからなら1行です: `npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`(WindowsのPowerShellでは `npx.cmd`)。手元に入っているAPIキーを見つけて使うか聞いてくれます。お金をかけずに試すなら、Geminiの無料APIキー([aistudio.google.com/apikey](https://aistudio.google.com/apikey))で「Google Gemini」を選んでください。
 
 1. サイトで「はじめる」→ 予算を選ぶ → AI用のURLが出る
 2. そのURLをAIに登録(Claude: コネクタ / ChatGPT: 開発者モードのアプリ / Muse: チャットでURLを送る / Cursor・VS Code: MCP設定)
@@ -64,13 +72,25 @@ Each agent can also have at most a few API requests in flight at once (8 by defa
 
 ### Use it from your agent framework
 
-Or set everything up from the terminal in one command (account, agent with a daily budget, API key):
+**Fastest: from inside Claude Code.** Add the plugin and tell it your daily budget:
+
+```
+/plugin marketplace add ut181749ut/saifuban
+/plugin install saifuban@saifuban
+/saifuban:setup 10
+```
+
+It creates your account and an agent with a $10/day cap, stores the Anthropic key that's already in your environment (you never paste it into the chat), checks the key works through the proxy, writes `~/.claude/settings.json`, and opens your dashboard already signed in. Restart Claude Code and every call goes through the cap.
+
+**Or from the terminal**, one command:
 
 ```bash
 npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
 ```
 
-On Windows PowerShell use `npx.cmd` instead of `npx`. Git doesn't need to be installed. The command checks GitHub for a newer version on start and runs that one, so an old copy cached by npx is never used.
+On Windows PowerShell use `npx.cmd` instead of `npx`. Git doesn't need to be installed. It finds the API key already in your environment and offers to use it, remembers your account on this computer, and checks GitHub for a newer version on start. Add `--yes` to accept every default.
+
+**Want to try it for free?** Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and choose "Google Gemini" (or `--provider google`).
 
 
 Point the client at the Saifuban proxy and give it the agent's proxy key. Nothing else changes.

@@ -1,0 +1,12 @@
+{
+  "name": "saifuban",
+  "description": "Put a hard daily spending cap on Claude Code's API usage in one step (Saifuban)",
+  "version": "1.0.0",
+  "author": {
+    "name": "ut181749ut",
+    "url": "https://github.com/ut181749ut/saifuban"
+  },
+  "homepage": "https://github.com/ut181749ut/saifuban",
+  "repository": "https://github.com/ut181749ut/saifuban",
+  "license": "MIT"
+}

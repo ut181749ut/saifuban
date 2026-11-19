@@ -243,8 +243,11 @@ Deno.serve(async (req) => {
   const provider = m[1];
   const path = m[2] || "/";
 
-  const key = (req.headers.get("x-api-key") || req.headers.get("x-goog-api-key") ||
-    req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || url.searchParams.get("key") || "").trim();
+  // 本物のキーと財布番のキーが両方付いてくることがある(Claude Code で ANTHROPIC_API_KEY と ANTHROPIC_AUTH_TOKEN が両方あるときなど)。
+  // sbk_ で始まる方を使う
+  const cands = [req.headers.get("x-api-key"), req.headers.get("x-goog-api-key"),
+    req.headers.get("authorization")?.replace(/^Bearer\s+/i, ""), url.searchParams.get("key")].map((v) => (v || "").trim()).filter(Boolean);
+  const key = cands.find((v) => v.startsWith("sbk_")) || cands[0] || "";
   url.searchParams.delete("key"); // エージェントキーを外部に渡さない
   if (!key.startsWith("sbk_")) {
     return errorResponse(provider, 401, "authentication_error", "財布番のエージェントキー(sbk_...)をAPIキーとして設定してください / Set your Saifuban agent key (sbk_...) as the API key");
