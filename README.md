@@ -27,6 +27,8 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 
 財布番はお金を動かしません。カード情報や口座は預かりません。
 
+APIキーを他人のサーバーに預けたくない場合は、全部を自分のSupabaseとCloudflare(どちらも無料枠で足ります)で動かせます。手順は [SELF_HOST.md](SELF_HOST.md)。
+
 ### 使い方
 
 ターミナルからなら1行で始められます(登録・AI作成・APIキー預けまで): `npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`(WindowsのPowerShellでは `npx.cmd https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`)
@@ -45,6 +47,11 @@ https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp
 
 **Stop your AI agents from overspending.** Saifuban puts a hard daily cap on your agents' API bills and makes them ask your phone before any other payment.
 
+- **Keep your real Anthropic / OpenAI / Google key.** No reseller in between, no markup, new API features work on day one. The agent gets a proxy key; your key stays encrypted on the server.
+- **Parallel calls can't go over.** Every call reserves its worst-case cost before it's sent, so ten calls started at once still stop at the cap.
+- **Per agent, per day, in your time zone.** Each agent gets its own daily (and optional weekly/monthly) budget that resets at your midnight. Budgets can be shown in USD (Settings → currency).
+- **Open source and self-hostable.** Don't want to hand your key to someone else's server? Run the whole thing on your own Supabase and Cloudflare free tiers: [SELF_HOST.md](SELF_HOST.md).
+
 <img src="api-en.gif" width="420" alt="Demo: an agent loops overnight and Saifuban stops its API calls at the daily budget">
 
 ### Hard cap on API bills
@@ -53,7 +60,7 @@ Store your OpenAI, Anthropic, Google or OpenRouter key in Saifuban. Your agent o
 
 Before each call, the proxy reserves the most it could cost (input size + `max_tokens` × the model's price) and settles to the actual usage when the call ends. Reservations count against the caps together with spend, so parallel calls can't all slip under the line. If a stream is cut before the usage arrives, the reserved amount is recorded instead of zero. Each reservation is settled exactly once: a retried or late settle can't charge twice, and a reservation whose settle never arrives is charged at its reserved amount after 10 minutes (and corrected if the real usage shows up later). See the [reserve → settle → release test](tests/reserve-settle-release.md). Days reset at midnight in the owner's own time zone (taken from their device, changeable in Settings), and a call is charged to the day it started, so a call from 23:59 to 00:01 stays on the earlier day ([day boundary test](tests/day-boundary.md)). If a request doesn't set an output limit, the proxy sets one (the model's maximum, up to 32k tokens) and reserves for it, so a call can't write past its reservation; asking for several answers at once (`n`) reserves for each. Web searches and other per-call tool fees are counted too, prices and the exchange rate update daily, and a model missing from the price list is charged at that provider's highest price. If a call doesn't fit only because other calls still hold reservations, the proxy answers 429 (retry shortly), so a retry goes through once they finish. If the rest of the day's budget can't cover the requested `max_tokens` but can cover at least 4,096 tokens, the proxy lowers `max_tokens` to what's left instead of refusing (the response carries `x-saifuban-output-capped`). When the budget is really used up, it answers `429` with `billing_error`, `x-should-retry: false` and `Retry-After` set to the reset time, the same shape Claude Code expects from a spend-limit gateway, so clients stop instead of retrying. Token-counting calls (`count_tokens`, `input_tokens`) pass through free. Endpoints whose cost can't be metered per call (batches, images, audio, video, fine-tuning, realtime) are refused, so they can't go around the cap. The proxy runs on Cloudflare, so responses that take several minutes stream to the end (the older `https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-proxy/...` address still works, but cuts responses at 150 seconds).
 
-Each agent can also have at most a few API requests in flight at once (4 by default, adjustable). Extra requests get a `429` and the official SDKs retry them automatically, so a runaway loop can't fire hundreds of calls before the budget check catches up.
+Each agent can also have at most a few API requests in flight at once (8 by default, adjustable). Extra requests get a `429` and the official SDKs retry them automatically, so a runaway loop can't fire hundreds of calls before the budget check catches up.
 
 ### Use it from your agent framework
 

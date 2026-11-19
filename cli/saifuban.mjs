@@ -16,7 +16,9 @@ const PROJECT = "https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1";
 const API = process.env.SAIFUBAN_API || PROJECT + "/saifuban-app";
 const SITE = "https://ut181749ut.github.io/saifuban/";
 // APIキー中継(Cloudflare 経由。長い応答も途中で切れない)
-const RELAY = "https://saifuban.saifuban-app.workers.dev/proxy";
+// セルフホスト: SAIFUBAN_API(自分の saifuban-app の住所)と SAIFUBAN_RELAY(自分の Worker の /proxy、なければ Supabase 直の中継)
+const RELAY = process.env.SAIFUBAN_RELAY ||
+  (process.env.SAIFUBAN_API ? process.env.SAIFUBAN_API.replace(/\/saifuban-app\/?$/, "/saifuban-proxy") : "https://saifuban.saifuban-app.workers.dev/proxy");
 const PROVIDERS = {
   // Claude Code は ANTHROPIC_API_KEY だと初回に「このキーを使う?」と聞き、既定が「いいえ」。Enter で断ると以後黙って無視される。
   // ANTHROPIC_AUTH_TOKEN なら聞かれずにすぐ使われる(Anthropic SDK もこの変数を読む)
@@ -54,7 +56,8 @@ if (args.includes("--help") || args.includes("-h")) {
 
 Usage: npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz [--budget 1000] [--provider anthropic|openai|openrouter] [--name "my agent"]
 
-  --budget    daily budget in yen (default 1000, about $6.50)
+  --budget    daily budget (default $7, or ¥1000 in Japan)
+  --currency  USD or JPY (default: JPY in Japan, USD elsewhere)
   --provider  which API your agent uses (default anthropic)
   --name      a name for the agent (default: "Claude Code", "OpenAI agent" or "OpenRouter agent")
 
@@ -118,16 +121,25 @@ async function main() {
     owner = r.owner_key;
     created = true;
     call("track", { event: "signup", src: "cli", lang: "en" }).catch(() => {});
-  } else {
-    await call("dashboard", {}, owner);
   }
+  const dash = await call("dashboard", {}, owner);
   // 1日の予算は、この端末の時間帯の0時で区切る(まだ決めていないアカウントだけ)
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })();
   const tzr = tz ? await call("set_tz", { tz, auto: true }, owner).catch(() => null) : null;
 
-  // 2. agent
-  const budget = Math.round(Number(flag("budget") || (await ask("Daily budget in yen [1000 ≈ $6.50]: ")) || 1000));
-  if (!Number.isFinite(budget) || budget < 1) throw new Error("The budget must be a positive number of yen.");
+  // 表示の通貨: 日本の人は円、それ以外はドル(新しいアカウントだけ自動で決める。--currency で指定も可)
+  const rate = Number(dash && dash.usd_jpy) || 155;
+  const locale = (() => { try { return Intl.DateTimeFormat().resolvedOptions().locale || ""; } catch { return ""; } })();
+  let cur = String(flag("currency") || "").toUpperCase();
+  if (cur !== "USD" && cur !== "JPY") cur = created ? (/^ja/i.test(locale) || tz === "Asia/Tokyo" ? "JPY" : "USD") : (dash && dash.currency === "USD" ? "USD" : "JPY");
+  if (cur !== (dash && dash.currency) && (created || flag("currency"))) await call("set_currency", { currency: cur }, owner).catch(() => {});
+  const money = (jpy) => cur === "USD" ? "$" + (jpy / rate).toFixed(2) : "¥" + Math.round(jpy).toLocaleString("en-US");
+
+  // 2. agent(予算は内部では円で持つ)
+  const input = flag("budget") || (await ask(cur === "USD" ? "Daily budget in USD [7]: " : "Daily budget in yen [1000 ≈ $6.50]: "));
+  const amount = Number(input || (cur === "USD" ? 7 : 1000));
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("The budget must be a positive number.");
+  const budget = Math.max(1, Math.round(cur === "USD" ? amount * rate : amount));
   let provider = flag("provider");
   if (!provider) {
     console.log("\nWhich API does your agent use?");
@@ -179,7 +191,7 @@ async function main() {
   rl.close();
 
   // 4. result
-  console.log("\n" + bold("Done.") + ` Agent "${name}" can spend up to ¥${budget.toLocaleString("en-US")} a day` +
+  console.log("\n" + bold("Done.") + ` Agent "${name}" can spend up to ${money(budget)} a day` +
     (tzr && tzr.tz ? ` (resets at midnight, ${tzr.tz}).\n` : ".\n"));
   if (created) {
     console.log(bold("Your Saifuban passphrase") + " (your account; save it in a password manager, don't share it):");
