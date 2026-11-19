@@ -10,7 +10,7 @@ Set up Saifuban (an open-source proxy that stops API calls once a daily budget i
 1. Work out the daily budget and the provider from the arguments: $ARGUMENTS
    - A plain number is the budget in the user's currency. "yen" or "円" means JPY, "$" or "usd" means USD.
    - Provider defaults to `anthropic` (Claude Code). Use `google` if the user wants to try it for free with a Gemini key.
-   - If no budget was given, ask once: "How much per day? (default $7 / ¥1,000)". Don't ask anything else.
+   - If no budget was given, don't ask: use the default ($7, or ¥1,000 for Japanese) and mention it can be changed on the dashboard. Don't ask the user anything before running the command.
 2. Never ask the user to paste an API key into this chat. The setup command reads the key from the environment (ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY) by itself, and if none is there the user can add it on the dashboard later.
 3. Run this one command (on Windows use `npx.cmd` instead of `npx`):
 

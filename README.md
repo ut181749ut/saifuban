@@ -31,13 +31,14 @@ APIキーを他人のサーバーに預けたくない場合は、全部を自�
 
 ### 使い方
 
-Claude Codeを使っているなら、Claude Codeの中で3行打つだけです(登録・AI作成・APIキー預け・設定まで全部やります。APIキーをチャットに貼る必要はありません):
+Claude Codeを使っているなら、Claude Codeの中で2行打つだけです(登録・AI作成・APIキー預け・設定まで全部やります。APIキーをチャットに貼る必要はありません):
 
 ```
-/plugin marketplace add ut181749ut/saifuban
-/plugin install saifuban@saifuban
-/saifuban:setup 1000円
+/plugin install saifuban --marketplace ut181749ut/saifuban
+/saifuban:setup
 ```
+
+(予算は `/saifuban:setup 1500円` のように付けられます。付けなければ1日1,000円で、あとから管理画面で変えられます)
 
 ターミナルからなら1行です: `npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`(WindowsのPowerShellでは `npx.cmd`)。手元に入っているAPIキーを見つけて使うか聞いてくれます。お金をかけずに試すなら、Geminiの無料APIキー([aistudio.google.com/apikey](https://aistudio.google.com/apikey))で「Google Gemini」を選んでください。
 
@@ -75,12 +76,13 @@ Each agent can also have at most a few API requests in flight at once (8 by defa
 **Fastest: from inside Claude Code.** Add the plugin and tell it your daily budget:
 
 ```
-/plugin marketplace add ut181749ut/saifuban
-/plugin install saifuban@saifuban
-/saifuban:setup 10
+/plugin install saifuban --marketplace ut181749ut/saifuban
+/saifuban:setup
 ```
 
-It creates your account and an agent with a $10/day cap, stores the Anthropic key that's already in your environment (you never paste it into the chat), checks the key works through the proxy, writes `~/.claude/settings.json`, and opens your dashboard already signed in. Restart Claude Code and every call goes through the cap.
+(Add a budget like `/saifuban:setup 10` for $10/day; the default is $7. On Claude Code older than v2.1.275, add the marketplace first with `/plugin marketplace add ut181749ut/saifuban`, then `/plugin install saifuban@saifuban`.)
+
+It creates your account and an agent with a daily cap, stores the Anthropic key that's already in your environment (you never paste it into the chat), checks the key works through the proxy, writes `~/.claude/settings.json`, and opens your dashboard already signed in. Restart Claude Code and every call goes through the cap.
 
 **Or from the terminal**, one command:
 
@@ -88,7 +90,7 @@ It creates your account and an agent with a $10/day cap, stores the Anthropic ke
 npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
 ```
 
-On Windows PowerShell use `npx.cmd` instead of `npx`. Git doesn't need to be installed. It finds the API key already in your environment and offers to use it, remembers your account on this computer, and checks GitHub for a newer version on start. Add `--yes` to accept every default.
+On Windows PowerShell use `npx.cmd` instead of `npx`. Git doesn't need to be installed. It finds the API key already in your environment and offers to use it, remembers your account on this computer, and checks GitHub for a newer version on start. For a new account it asks two things at most (budget, and whether to use the key it found); add `--yes` to skip both. Already have an account? Add `--login`.
 
 **Want to try it for free?** Get a free Gemini API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and choose "Google Gemini" (or `--provider google`).
 

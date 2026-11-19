@@ -84,6 +84,7 @@ Usage: npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
   --yes       don't ask: use the API key already in your environment and save to ~/.claude/settings.json
   --open      open the dashboard in your browser at the end (already signed in)
   --new       make a new account even if this computer already has one
+  --login     use an account you already have (asks for its sbo_ passphrase)
 
 Your account is remembered in ~/.saifuban/config.json. You can also pass a passphrase
 in SAIFUBAN_OWNER_KEY and a provider API key in SAIFUBAN_PROVIDER_KEY.`);
@@ -142,7 +143,8 @@ async function main() {
       console.log(dim(`The account saved in ${CONF} no longer works, so a new one will be made.\n`));
     }
   }
-  for (let tries = 0; !owner && !YES && tries < 3; tries++) {
+  // 合言葉は、--login を付けたときだけ聞く(初めての人は何も聞かずに新しく作る)
+  for (let tries = 0; !owner && !YES && args.includes("--login") && tries < 3; tries++) {
     const a = await ask(tries === 0
       ? "Already have a Saifuban passphrase (sbo_…)? Paste it (it stays hidden), or press Enter to create a new account: "
       : "Paste the passphrase again (sbo_ + 48 letters/numbers), or press Enter to create a new account: ", true);
@@ -178,6 +180,11 @@ async function main() {
   if (!Number.isFinite(amount) || amount <= 0) throw new Error("The budget must be a positive number.");
   const budget = Math.max(1, Math.round(cur === "USD" ? amount * rate : amount));
   let provider = flag("provider");
+  // 手元にキーが1種類だけあれば、どのAPIか聞かずに決める
+  if (!provider) {
+    const have = Object.keys(ENV_KEYS).filter((p) => ENV_KEYS[p].some(([v, re]) => re.test(String(process.env[v] || "").trim())));
+    if (have.length === 1) { provider = have[0]; console.log(dim(`Using ${PROVIDERS[provider].label.split(" (")[0]} (found your key in the environment).`)); }
+  }
   if (!provider && YES) provider = "anthropic";
   if (!provider) {
     console.log("\nWhich API does your agent use?");
@@ -194,13 +201,15 @@ async function main() {
 
   // 3. provider key (stored encrypted; the agent never sees it)
   let pkey = process.env.SAIFUBAN_PROVIDER_KEY || "";
+  let settingsOk = false; // 1回の確認で、キーを預けるのと Claude Code の設定をまとめて済ませる
   if (!pkey) {
     // 環境変数に本物のキーがあれば、それを使うか聞く(貼る手間をなくす)
     const found = (ENV_KEYS[provider] || []).map(([v, re]) => [v, String(process.env[v] || "").trim(), re]).find(([, val, re]) => re.test(val));
     if (found) {
       const [v, val] = found;
-      const ok = YES || !(await ask(`\nFound your ${provider} key in ${v} (${val.slice(0, 7)}…${val.slice(-4)}). Store it in Saifuban (encrypted)? [Y/n]: `)).toLowerCase().startsWith("n");
-      if (ok) pkey = val;
+      const also = provider === "anthropic" && !args.includes("--no-settings") ? " and point Claude Code at Saifuban" : "";
+      const ok = YES || !(await ask(`\nFound your key in ${v} (${val.slice(0, 7)}…${val.slice(-4)}). Store it in Saifuban (encrypted)${also}? [Y/n]: `)).toLowerCase().startsWith("n");
+      if (ok) { pkey = val; if (also) settingsOk = true; }
     }
   }
   if (!pkey && !YES) pkey = await ask(`\nYour real ${provider} API key (${P.keyHint}), stored encrypted in Saifuban. Press Enter to add it later on the website: `, true);
@@ -217,7 +226,7 @@ async function main() {
   if (provider === "anthropic" && pkey && !args.includes("--no-settings")) {
     const dir = process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
     const file = join(dir, "settings.json");
-    const yes = YES ? "y" : (await ask(`\nSave it to ${file} so Claude Code always uses it (new terminals too)? [Y/n]: `)).toLowerCase();
+    const yes = YES || settingsOk ? "y" : (await ask(`\nSave it to ${file} so Claude Code always uses it (new terminals too)? [Y/n]: `)).toLowerCase();
     if (!yes.startsWith("n")) {
       try {
         let cur = {};
