@@ -88,6 +88,7 @@ Usage: npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
   --login     use an account you already have (asks for its sbo_ passphrase)
 
   status      show today's spending and what's left:  npx … status
+  off         stop using Saifuban in Claude Code (puts settings.json back; run setup again to turn it on)
 
 Your account is remembered in ~/.saifuban/config.json. You can also pass a passphrase
 in SAIFUBAN_OWNER_KEY and a provider API key in SAIFUBAN_PROVIDER_KEY.`);
@@ -169,7 +170,61 @@ console.log("Saifuban");
   try { mkdirSync(CONF_DIR, { recursive: true }); writeFileSync(STATUS_SCRIPT, code); return true; } catch { return false; }
 }
 
+// Claude Code の設定ファイル
+const claudeSettings = () => join(process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude"), "settings.json");
+const readJson = (f) => { try { const t = readFileSync(f, "utf8"); return t.trim() ? JSON.parse(t) : {}; } catch { return null; } };
+const isOurs = {
+  base: (v) => typeof v === "string" && /saifuban/i.test(v),
+  token: (v) => typeof v === "string" && v.startsWith("sbk_"),
+  line: (s) => !!s && typeof s.command === "string" && s.command.includes(".saifuban") && s.command.includes("statusline.mjs"),
+};
+
+// やめる: Claude Code の設定から財布番の分だけ外す(ほかの設定はそのまま)。AIや予算は消さない
+function turnOff() {
+  const file = claudeSettings();
+  const cur = existsSync(file) ? readJson(file) : {};
+  if (cur === null) throw new Error(`couldn't read ${file} (is it valid JSON?)`);
+  const removed = [];
+  const env = cur.env || {};
+  if (isOurs.base(env.ANTHROPIC_BASE_URL)) { delete env.ANTHROPIC_BASE_URL; removed.push("ANTHROPIC_BASE_URL"); }
+  if (isOurs.token(env.ANTHROPIC_AUTH_TOKEN)) { delete env.ANTHROPIC_AUTH_TOKEN; removed.push("ANTHROPIC_AUTH_TOKEN"); }
+  if (isOurs.token(env.ANTHROPIC_API_KEY)) { delete env.ANTHROPIC_API_KEY; removed.push("ANTHROPIC_API_KEY"); }
+  // 設定のときに外した本物のキーがバックアップにあれば戻す
+  const bak = readJson(file + ".bak-saifuban");
+  const real = bak && bak.env && bak.env.ANTHROPIC_API_KEY;
+  let restored = false;
+  if (real && !isOurs.token(real) && !env.ANTHROPIC_API_KEY) { env.ANTHROPIC_API_KEY = real; restored = true; }
+  if (Object.keys(env).length) cur.env = env; else delete cur.env;
+  if (isOurs.line(cur.statusLine)) { delete cur.statusLine; removed.push("statusLine"); }
+  if (removed.length || restored) writeFileSync(file, JSON.stringify(cur, null, 2) + "\n");
+  const c = readConf();
+  if (c.agent) { c.off = true; writeConf(c); }
+  if (!removed.length && !restored) console.log("Saifuban wasn't in " + file + ", so nothing changed.");
+  else {
+    console.log(bold("Saifuban is off.") + ` Removed ${removed.join(", ")} from ${file}` + (restored ? " and put your ANTHROPIC_API_KEY back." : "."));
+    console.log("Start a new Claude Code session and it talks to Anthropic directly again.");
+  }
+  console.log(dim("Your agent and budget are kept. Run the setup command again to turn it back on, or delete the agent on " + SITE + "\n"));
+}
+
+// また使う: 前に作ったAIのキーで Claude Code の設定を書き直す
+function turnOn(c) {
+  const file = claudeSettings();
+  const cur = existsSync(file) ? readJson(file) : {};
+  if (cur === null) throw new Error(`couldn't read ${file} (is it valid JSON?)`);
+  if (existsSync(file)) copyFileSync(file, file + ".bak-saifuban");
+  else mkdirSync(join(file, ".."), { recursive: true });
+  const env = { ...(cur.env || {}), ANTHROPIC_BASE_URL: (c.relay || RELAY) + PROVIDERS.anthropic.base, ANTHROPIC_AUTH_TOKEN: c.agent.key };
+  if (env.ANTHROPIC_API_KEY && !isOurs.token(env.ANTHROPIC_API_KEY)) delete env.ANTHROPIC_API_KEY;
+  cur.env = env;
+  if (!cur.statusLine && writeStatusScript()) cur.statusLine = { type: "command", command: `node "${STATUS_SCRIPT}"` };
+  writeFileSync(file, JSON.stringify(cur, null, 2) + "\n");
+  delete c.off; writeConf(c);
+  console.log(bold("Saifuban is back on") + ` for "${c.agent.name}". Start a new Claude Code session.\n`);
+}
+
 async function main() {
+  if (args[0] === "off") { turnOff(); rl.close(); return; }
   // 今日の状況だけ見る: npx … status
   if (args[0] === "status") {
     const c = readConf();
@@ -188,6 +243,7 @@ async function main() {
   if (conf.owner_key) { delete conf.owner_key; writeConf(conf); } // 以前の版が保存した合言葉は消す
   // もう設定済みなら、新しく作らずに今日の状況を見せる(--new で別のAIを作る)
   if (!owner && conf.agent && conf.agent.key && !args.includes("--new") && !args.includes("--login")) {
+    if (conf.off && (conf.agent.provider || "anthropic") === "anthropic") { turnOn(conf); await status(conf).catch(() => {}); rl.close(); return; }
     console.log(dim(`This computer is already set up (agent "${conf.agent.name}"). Add --new to make another agent, or --login to use a passphrase.\n`));
     await status(conf);
     rl.close();
@@ -248,7 +304,8 @@ async function main() {
   const name = (flag("name") || P.name).slice(0, 60);
   const ag = await call("create_agent", { name, per_tx: budget, daily: budget, auto: Math.min(300, budget), merchants: [] }, owner);
   call("track", { event: "agent_created", src: "cli", lang: "en" }).catch(() => {});
-  const confNew = { ...readConf(), agent: { id: ag.id, key: ag.agent_key, name, provider }, api: API.replace(/\/saifuban-app\/?$/, "/saifuban") };
+  const confNew = { ...readConf(), agent: { id: ag.id, key: ag.agent_key, name, provider }, api: API.replace(/\/saifuban-app\/?$/, "/saifuban"), relay: RELAY };
+  delete confNew.off;
   writeConf(confNew);
 
   // 3. provider key (stored encrypted; the agent never sees it)
@@ -330,7 +387,7 @@ async function main() {
   const KV = P.keyVar;
   if (savedTo) {
     console.log(bold("Saved") + ` to ${savedTo}. Start a new Claude Code session and it goes through Saifuban.`);
-    console.log(dim(`  (The old file is kept as settings.json.bak-saifuban. To stop using Saifuban, remove ANTHROPIC_BASE_URL and ${KV} from "env".)\n`));
+    console.log(dim(`  (The old file is kept as settings.json.bak-saifuban. To stop using Saifuban, run this command with "off".)\n`));
     console.log("For other tools (Anthropic SDK, scripts), set these two lines in the shell:\n");
   } else {
     console.log(bold("Set these two lines") + " in the shell where your agent runs:\n");

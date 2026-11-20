@@ -30,6 +30,12 @@ It enables `pg_net` and `pg_cron`, creates the tables and functions, seeds start
 supabase functions deploy saifuban saifuban-app saifuban-proxy saifuban-mcp saifuban-passkey --no-verify-jwt
 ```
 
+For the "budget hit, +¥500 for today" phone notification, tell the database where your functions live:
+
+```sql
+update settings set functions_url = 'https://<your-project-ref>.supabase.co/functions/v1' where id = 1;
+```
+
 `--no-verify-jwt` is needed because the functions check Saifuban's own keys (`sbk_...` for agents, `sbo_...` for owners) instead of Supabase JWTs.
 
 Optional environment variables (Edge Functions → Secrets):

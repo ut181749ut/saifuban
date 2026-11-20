@@ -11,7 +11,7 @@ self.addEventListener("push", (e) => {
     badge: "icon-192.png",
     tag: d.id ? "req-" + d.id : "saifuban",
     renotify: true,
-    requireInteraction: d.type === "pending",
+    requireInteraction: d.type === "pending" || d.type === "budget",
     data: d,
   };
   const en = d.lang === "en";
@@ -20,6 +20,8 @@ self.addEventListener("push", (e) => {
       ? [{ action: "approve", title: "Approve" }, { action: "reject", title: "Reject" }]
       : [{ action: "approve", title: "承認する" }, { action: "reject", title: "却下" }];
   }
+  // 予算切れ: 「今日だけ+500円」のボタン
+  if (d.type === "budget" && d.boost_url) opt.actions = [{ action: "boost", title: d.boost_label || (en ? "Add for today" : "今日だけ足す") }];
   e.waitUntil(Promise.all([
     self.registration.showNotification(d.title || (en ? "Saifuban" : "AIの財布番"), opt),
     self.clients.matchAll({ type: "window" }).then((ws) => ws.forEach((w) => w.postMessage({ type: "refresh" }))),
@@ -29,6 +31,16 @@ self.addEventListener("push", (e) => {
 self.addEventListener("notificationclick", (e) => {
   const d = e.notification.data || {};
   e.notification.close();
+  if (e.action === "boost") {
+    const en = d.lang === "en";
+    e.waitUntil(
+      fetch(d.boost_url, { method: "POST" }).then((r) => r.json())
+        .then((j) => self.registration.showNotification(j.ok ? (en ? "Budget raised for today" : "今日の予算を足しました") : (en ? "This button was already used" : "このボタンはもう使われています"),
+          { body: j.ok ? "+" + (d.short || "") : "", tag: "boost-done", icon: "icon-192.png" }))
+        .catch(() => self.registration.showNotification(en ? "Couldn't send" : "送れませんでした", { body: en ? "Open the app to change the budget" : "アプリを開いて予算を変えてください", icon: "icon-192.png" }))
+    );
+    return;
+  }
   if (e.action === "approve" || e.action === "reject") {
     const approve = e.action === "approve";
     e.waitUntil(

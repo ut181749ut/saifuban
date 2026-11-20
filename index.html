@@ -395,6 +395,9 @@ function showWelcome(reason){
   if(devVisit()){
     w.innerHTML=`<div class="wtext"><h2>AIエージェントのAPI代に、確実な上限を</h2>
     <p class="note">Claude Code・OpenAI SDK・LangChain・CrewAIなどで、接続先とキーを差し替えるだけ。1日・週・月の予算に達したら、財布番がリクエストを止めます。本物のAPIキーはAIに渡りません。</p>
+    <p class="note"><b>Claude Codeなら、この2行を貼るだけ</b>(1行ずつ送ってください):</p><code id="plug" class="urlbox">/plugin install saifuban --marketplace ut181749ut/saifuban
+/saifuban:setup</code><div class="row"><button data-copy="plug" class="primary">2行をコピー</button></div>
+    <p class="note">ほかのツールは、接続先とキーを差し替えます:</p>
     <code class="urlbox">${setv("ANTHROPIC_BASE_URL",RELAY+"/anthropic")}
 ${setv("ANTHROPIC_AUTH_TOKEN","sbk_…")}</code>
     <ol class="note steps"><li>はじめる(メール登録なし・無料)</li><li>AIを1つ作って、エージェントキー(sbk_…)を受け取る</li><li>「設定」でAPIキーを預けて、上の2行を設定する</li></ol>
@@ -664,7 +667,7 @@ document.addEventListener("click",async e=>{
   if(b.dataset.tab)return setTab(b.dataset.tab);
   if(b.dataset.guide){guideAI=b.dataset.guide;return renderTop()}
   if(b.dataset.apip){if(API_SETUP.some(x=>x.p===b.dataset.apip))apiP=b.dataset.apip;return renderTop()}
-  if(b.dataset.copy){if(/^(nu|env|cc|mm|nk|npx|base-)/.test(b.dataset.copy))trackOnce("copy_setup");if(b.dataset.step){guideDone[b.dataset.step]=true;setTimeout(renderTop,50)}const t=$(b.dataset.copy).textContent;
+  if(b.dataset.copy){if(/^(nu|env|cc|mm|nk|npx|plug|base-)/.test(b.dataset.copy))trackOnce("copy_setup");if(b.dataset.step){guideDone[b.dataset.step]=true;setTimeout(renderTop,50)}const t=$(b.dataset.copy).textContent;
     try{await navigator.clipboard.writeText(t);toast("コピーしました")}catch(_){const r=document.createRange();r.selectNodeContents($(b.dataset.copy));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("選択しました。長押しでコピーしてください")}return}
   if(b.id==="langbtn"){const nl=LANG==="en"?"ja":"en";try{localStorage.setItem("saifuban.lang",nl);localStorage.removeItem("saifuban.lang_synced")}catch(_){}
     if(OWNER)await api("set_lang",{lang:nl});try{if(OWNER)localStorage.setItem("saifuban.lang_synced",nl)}catch(_){}

@@ -1,12 +1,14 @@
 {
   "name": "saifuban",
-  "version": "0.1.0",
-  "description": "Saifuban setup in one command: a hard daily cap on your AI agent's API bill",
+  "version": "1.0.0",
+  "description": "A hard daily spending cap on your AI agent's API bill (Claude Code, OpenAI SDK, LangChain…). One command sets it up.",
   "bin": { "saifuban": "cli/saifuban.mjs" },
-  "files": ["cli/"],
+  "files": ["cli/saifuban.mjs"],
+  "type": "module",
   "engines": { "node": ">=18" },
+  "keywords": ["claude-code", "anthropic", "openai", "llm", "budget", "spending-limit", "api-proxy", "ai-agents"],
   "homepage": "https://ut181749ut.github.io/saifuban/",
-  "repository": "github:ut181749ut/saifuban",
-  "license": "MIT",
-  "private": true
+  "repository": { "type": "git", "url": "git+https://github.com/ut181749ut/saifuban.git" },
+  "bugs": "https://github.com/ut181749ut/saifuban/issues",
+  "license": "MIT"
 }

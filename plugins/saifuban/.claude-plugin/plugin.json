@@ -1,7 +1,7 @@
 {
   "name": "saifuban",
   "description": "Hard daily spending cap on Claude Code API usage, and approval before any purchase (Saifuban)",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": {
     "name": "ut181749ut",
     "url": "https://github.com/ut181749ut/saifuban"

@@ -6,6 +6,8 @@
 // POST /saifuban/decide?id=123&t=<通知のトークン>&a=1|0   (スマホ通知のボタンから)
 // POST /saifuban/redeem {token, merchant?, amount?, currency?}   支払う側が使い捨てトークンを確認して使用済みにする
 // POST /saifuban/verify {token, merchant?, amount?, currency?}   確認だけ(使用済みにしない)
+// POST /saifuban/budget-alert {agent}   API中継が予算切れで止めたとき(データベースから、合言葉つきで呼ばれる)。持ち主に通知を出す
+// POST /saifuban/boost?a=<AIのid>&t=<通知のトークン>   通知のボタンから: 今日だけ予算を足す
 // GET  /saifuban/history?merchant=&days=30&limit=20   このAI自身の過去の申請(二重払い・二重契約の確認用)
 // request の recurring: "week" | "month" | "year" を付けると定期購入として扱い、金額に関係なく必ず持ち主に聞く
 // request の idempotency_key: 同じ値のやり直しは新しい申請を作らず前の申請を返す(承認待ちと同じ内容の申請は印がなくても前のものを返す)
@@ -183,6 +185,55 @@ async function notifyPending(id: number) {
   await Promise.all(jobs);
 }
 
+// 予算切れの通知(「今日だけ+500円」のボタン付き)。ボタンの合言葉は持ち主の通知にだけ載り、AIには渡らない
+let RELAY_SECRET = "";
+async function relayOk(req: Request) {
+  if (!RELAY_SECRET) { const { data } = await db.rpc("sb_relay_secret"); RELAY_SECRET = typeof data === "string" ? data : ""; }
+  const got = req.headers.get("x-saifuban-relay") || "";
+  if (RELAY_SECRET.length < 32 || got.length !== RELAY_SECRET.length) return false;
+  let diff = 0;
+  for (let i = 0; i < got.length; i++) diff |= got.charCodeAt(i) ^ RELAY_SECRET.charCodeAt(i);
+  return diff === 0;
+}
+async function budgetAlert(req: Request) {
+  if (!(await relayOk(req))) return json({ error: "forbidden" }, 403);
+  let b: Record<string, unknown> = {};
+  try { b = await req.json(); } catch { return json({ error: "invalid_json" }, 400); }
+  const n = await call("sb_budget_alert_prepare", { p_agent: String(b.agent ?? "") });
+  if (!n || n.skip || n.error) return json({ ok: true, skipped: true });
+  const en = n.lang === "en";
+  const P = { currency: n.currency as string, rate: n.rate as number };
+  const plus = money(n.boost, P);
+  const boostUrl = `${SELF}/boost?a=${n.agent_id}&t=${n.token}`;
+  const title = en ? `${n.agent} hit today's budget` : `${n.agent} が今日の予算に達しました`;
+  const body = en ? `Stopped at the daily budget of ${money(n.daily, P)}. Tap "+${plus} today" to keep going.` : `1日の予算(${money(n.daily, P)})に達したので止めました。続けるなら「今日だけ+${plus}」を押してください。`;
+  const label = en ? `+${plus} today` : `今日だけ+${plus}`;
+  const jobs: Promise<unknown>[] = [];
+  if (Array.isArray(n.push) && n.push.length) {
+    jobs.push(sendPush(db, n.push, { type: "budget", id: `budget-${n.agent_id}`, title, body, lang: en ? "en" : "ja", boost_url: boostUrl, boost_label: label, short: plus, app_url: n.app_url })
+      .catch((e) => console.error("push", e)));
+  }
+  if (n.topic) {
+    jobs.push(ntfy({ topic: n.topic, title, message: body, priority: 4, tags: ["moneybag"], click: n.app_url,
+      actions: [{ action: "http", label, url: boostUrl, method: "POST", clear: true }, { action: "view", label: en ? "Open app" : "画面で見る", url: n.app_url }] }));
+  }
+  await Promise.all(jobs);
+  return json({ ok: true });
+}
+async function boost(url: URL) {
+  const a = url.searchParams.get("a") ?? "", t = url.searchParams.get("t") ?? "";
+  if (!/^[0-9a-f-]{36}$/i.test(a) || !/^[0-9a-f]{48}$/.test(t)) return json({ ok: false, error: "bad_request" }, 400);
+  const r = await call("sb_boost", { p_agent: a, p_token: t });
+  if (!r || r.error === "server_error") return json({ ok: false, error: "server_error" }, 500);
+  const { owner_id: owner, ...out } = r as Record<string, any>;
+  if (out.ok) {
+    const { data: topic } = await db.rpc("sb_owner_topic", { p_owner: owner ?? null });
+    if (topic) await ntfy({ topic, title: out.lang === "en" ? "Budget raised for today" : "今日の予算を足しました",
+      message: `${out.agent} +${money(out.amount, out)}`, priority: 2, tags: ["white_check_mark"] });
+  }
+  return json(out, out.ok ? 200 : 409);
+}
+
 async function decideFromNotification(url: URL) {
   const id = Number(url.searchParams.get("id"));
   const token = url.searchParams.get("t") ?? "";
@@ -214,6 +265,8 @@ Deno.serve(async (req) => {
     if (route === "/decide" && req.method === "POST") return await decideFromNotification(url);
     if (route === "/redeem" && req.method === "POST") return await redeem(req, true);
     if (route === "/verify" && req.method === "POST") return await redeem(req, false);
+    if (route === "/budget-alert" && req.method === "POST") return await budgetAlert(req);
+    if (route === "/boost" && req.method === "POST") return await boost(url);
 
     const auth = req.headers.get("authorization") ?? "";
     const key = auth.replace(/^Bearer\s+/i, "").trim() || req.headers.get("x-agent-key") || "";
