@@ -72,29 +72,44 @@ async function proxy(req, env, ctx, u) {
   }
 
   // 3. 応答をそのまま流しつつ、同じものを手元にためて、終わったら精算に送る(中身の解析は Supabase 側)
-  const [toClient, toLedger] = up.body.tee();
-  ctx.waitUntil((async () => {
-    const reader = toLedger.getReader();
-    const head = []; let headSize = 0;
-    const tail = []; let tailSize = 0;
-    let truncated = false, normal = true;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (headSize < HEAD_MAX) { head.push(value); headSize += value.byteLength; continue; }
-        tail.push(value); tailSize += value.byteLength;
-        while (tailSize > TAIL_MAX && tail.length > 1) { tailSize -= tail.shift().byteLength; truncated = true; }
-      }
-    } catch (e) {
-      normal = false;
-    }
+  //    客が読んだ分だけ上流から読む。客が切断したら上流も切るので、AIはそこで書くのをやめる
+  //    (誰も受け取らない出力を最後まで書かせて、その分を請求されることがない)
+  const reader = up.body.getReader();
+  const head = []; let headSize = 0;
+  const tail = []; let tailSize = 0;
+  let truncated = false, finished = false;
+  const keep = (value) => {
+    if (headSize < HEAD_MAX) { head.push(value); headSize += value.byteLength; return; }
+    tail.push(value); tailSize += value.byteLength;
+    while (tailSize > TAIL_MAX && tail.length > 1) { tailSize -= tail.shift().byteLength; truncated = true; }
+  };
+  const done = (normal) => {
+    if (finished) return;
+    finished = true;
     const all = new Uint8Array(headSize + tailSize);
     let off = 0;
     for (const c of head) { all.set(c, off); off += c.byteLength; }
     for (const c of tail) { all.set(c, off); off += c.byteLength; }
-    await settle(up.status, all, normal, sse, truncated);
-  })());
+    ctx.waitUntil(settle(up.status, all, normal, sse, truncated));
+  };
+  const toClient = new ReadableStream({
+    async pull(ctrl) {
+      try {
+        const { done: end, value } = await reader.read();
+        if (end) { ctrl.close(); done(true); return; }
+        keep(value);
+        ctrl.enqueue(value);
+      } catch (e) {
+        ctrl.error(e);
+        done(false);
+      }
+    },
+    cancel() {
+      // 客が切断した: 上流を切って、そこまでに届いた分で精算する
+      reader.cancel().catch(() => {});
+      done(false);
+    },
+  });
   return new Response(toClient, { status: up.status, headers: out });
 }
 

@@ -42,7 +42,8 @@ const TEST = {
   openrouter: (k) => ({ url: "/openrouter/v1/key", headers: { authorization: "Bearer " + k } }),
   google: (k) => ({ url: "/google/v1beta/models", headers: { "x-goog-api-key": k } }),
 };
-// この端末に、アカウントの合言葉を保存しておく(次からは聞かない)
+// この端末に保存するのは、AIのキー(sbk_)と、残高表示に使う住所だけ。
+// アカウントの合言葉(sbo_)は保存しない: 同じパソコンで動くAIが読めてしまい、自分の予算を上げられてしまうから
 const CONF_DIR = join(homedir(), ".saifuban");
 const CONF = join(CONF_DIR, "config.json");
 const readConf = () => { try { return JSON.parse(readFileSync(CONF, "utf8")); } catch { return {}; } };
@@ -86,6 +87,8 @@ Usage: npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
   --new       make a new account even if this computer already has one
   --login     use an account you already have (asks for its sbo_ passphrase)
 
+  status      show today's spending and what's left:  npx … status
+
 Your account is remembered in ~/.saifuban/config.json. You can also pass a passphrase
 in SAIFUBAN_OWNER_KEY and a provider API key in SAIFUBAN_PROVIDER_KEY.`);
   process.exit(0);
@@ -123,7 +126,56 @@ async function call(action, body = {}, owner) {
 const bold = (s) => (process.stdout.isTTY ? `\x1b[1m${s}\x1b[0m` : s);
 const dim = (s) => (process.stdout.isTTY ? `\x1b[2m${s}\x1b[0m` : s);
 
+// 今日の状況(AIのキーで読める範囲だけ。予算を変えるのは管理画面から)
+async function status(c) {
+  const r = await fetch((c.api || PROJECT + "/saifuban") + "/budget", { headers: { authorization: "Bearer " + c.agent.key }, signal: AbortSignal.timeout(10000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error("couldn't read the budget (" + (j.error || r.status) + ")");
+  const usd = j.currency === "USD";
+  const m = (k) => usd ? "$" + Number(j[k + "_usd"] ?? 0).toFixed(2) : "¥" + Math.round(Number(j[k + "_jpy"] ?? 0)).toLocaleString("en-US");
+  console.log(bold(`${j.agent || c.agent.name}:`) + ` ${m("spent_today")} used today, ${m("remaining_today")} left of ${m("daily_budget")} (resets ${String(j.budget_resets_at || "at midnight").replace(/^midnight/, "at midnight")}).`);
+  if (j.weekly_budget_jpy) console.log(`  This week: ${m("used_this_week")} of ${m("weekly_budget")}.`);
+  if (j.monthly_budget_jpy) console.log(`  This month: ${m("used_this_month")} of ${m("monthly_budget")}.`);
+  console.log(dim(`\nTo change the budget, open ${SITE} (it's where you approve payments too).`));
+}
+
+// Claude Code の画面の下に出す一行(1分ごとに読み直す。速く終わるよう、npx を通さない小さなファイル)
+const STATUS_SCRIPT = join(CONF_DIR, "statusline.mjs");
+function writeStatusScript() {
+  const code = `// Saifuban status line for Claude Code: shows the money left today. Made by the Saifuban setup command.
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+const dir = join(homedir(), ".saifuban"), cache = join(dir, "status-cache.json");
+try { process.stdin.resume(); process.stdin.on("data", () => {}); } catch {}
+const show = (j) => {
+  const usd = j.currency === "USD";
+  const m = (k) => usd ? "$" + Number(j[k + "_usd"] ?? 0).toFixed(2) : "¥" + Math.round(Number(j[k + "_jpy"] ?? 0)).toLocaleString("en-US");
+  const ja = !usd;
+  console.log((ja ? "財布番 残り " : "Saifuban ") + m("remaining_today") + (ja ? " / " : " left of ") + m("daily_budget"));
+  process.exit(0);
+};
+let c = {}; try { c = JSON.parse(readFileSync(cache, "utf8")); } catch {}
+if (c.at && Date.now() - c.at < 60000 && c.data) show(c.data);
+try {
+  const conf = JSON.parse(readFileSync(join(dir, "config.json"), "utf8"));
+  const r = await fetch(conf.api + "/budget", { headers: { authorization: "Bearer " + conf.agent.key }, signal: AbortSignal.timeout(2500) });
+  const j = await r.json();
+  if (!j.error) { try { writeFileSync(cache, JSON.stringify({ at: Date.now(), data: j })); } catch {} show(j); }
+} catch {}
+if (c.data) show(c.data);
+console.log("Saifuban");
+`;
+  try { mkdirSync(CONF_DIR, { recursive: true }); writeFileSync(STATUS_SCRIPT, code); return true; } catch { return false; }
+}
+
 async function main() {
+  // 今日の状況だけ見る: npx … status
+  if (args[0] === "status") {
+    const c = readConf();
+    if (!c.agent || !c.agent.key) { console.log("Saifuban isn't set up on this computer yet. Run the setup command without \"status\"."); rl.close(); return; }
+    await status(c); rl.close(); return;
+  }
   console.log(bold("\nSaifuban") + " — a hard daily cap on your AI agent's API bill\n");
 
   // 1. account
@@ -133,15 +185,13 @@ async function main() {
   let owner = pick(process.env.SAIFUBAN_OWNER_KEY);
   if (!owner && process.env.SAIFUBAN_OWNER_KEY) throw new Error("SAIFUBAN_OWNER_KEY doesn't look like a Saifuban passphrase (sbo_ + 48 hex characters).");
   const conf = readConf();
-  if (!owner && !args.includes("--new") && pick(conf.owner_key)) {
-    owner = pick(conf.owner_key);
-    try {
-      await call("dashboard", {}, owner);
-      console.log(dim(`Using your Saifuban account saved on this computer (${CONF}).\n`));
-    } catch {
-      owner = "";
-      console.log(dim(`The account saved in ${CONF} no longer works, so a new one will be made.\n`));
-    }
+  if (conf.owner_key) { delete conf.owner_key; writeConf(conf); } // 以前の版が保存した合言葉は消す
+  // もう設定済みなら、新しく作らずに今日の状況を見せる(--new で別のAIを作る)
+  if (!owner && conf.agent && conf.agent.key && !args.includes("--new") && !args.includes("--login")) {
+    console.log(dim(`This computer is already set up (agent "${conf.agent.name}"). Add --new to make another agent, or --login to use a passphrase.\n`));
+    await status(conf);
+    rl.close();
+    return;
   }
   // 合言葉は、--login を付けたときだけ聞く(初めての人は何も聞かずに新しく作る)
   for (let tries = 0; !owner && !YES && args.includes("--login") && tries < 3; tries++) {
@@ -161,7 +211,7 @@ async function main() {
     call("track", { event: "signup", src: "cli", lang: "en" }).catch(() => {});
   }
   const dash = await call("dashboard", {}, owner);
-  const saved = pick(conf.owner_key) === owner || writeConf({ ...conf, owner_key: owner });
+
   // 1日の予算は、この端末の時間帯の0時で区切る(まだ決めていないアカウントだけ)
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })();
   const tzr = tz ? await call("set_tz", { tz, auto: true }, owner).catch(() => null) : null;
@@ -198,6 +248,8 @@ async function main() {
   const name = (flag("name") || P.name).slice(0, 60);
   const ag = await call("create_agent", { name, per_tx: budget, daily: budget, auto: Math.min(300, budget), merchants: [] }, owner);
   call("track", { event: "agent_created", src: "cli", lang: "en" }).catch(() => {});
+  const confNew = { ...readConf(), agent: { id: ag.id, key: ag.agent_key, name, provider }, api: API.replace(/\/saifuban-app\/?$/, "/saifuban") };
+  writeConf(confNew);
 
   // 3. provider key (stored encrypted; the agent never sees it)
   let pkey = process.env.SAIFUBAN_PROVIDER_KEY || "";
@@ -218,7 +270,7 @@ async function main() {
     call("track", { event: "key_stored", src: "cli", lang: "en" }).catch(() => {});
   }
   // Claude Code: ~/.claude/settings.json の env に書けば、新しいターミナルでも(バックグラウンドのエージェントでも)ずっと効く
-  let savedTo = "";
+  let savedTo = "", statusLine = "";
   // キーを預けていないのに Claude Code を中継に向けると、全部の呼び出しが失敗する(サブスクで使っている人も止まる)ので、そのときは書かない
   if (provider === "anthropic" && !pkey && !args.includes("--no-settings")) {
     console.log(dim("\nNo Anthropic API key was stored, so Claude Code's settings were left as they are. Add the key on the dashboard, then run this command again."));
@@ -236,6 +288,11 @@ async function main() {
           copyFileSync(file, file + ".bak-saifuban");
         } else mkdirSync(dir, { recursive: true });
         cur.env = { ...(cur.env || {}), ANTHROPIC_BASE_URL: RELAY + P.base, ANTHROPIC_AUTH_TOKEN: ag.agent_key };
+        // 画面の下に今日の残りを出す(すでに自分のステータスラインがある人は、そのままにする)
+        if (!cur.statusLine && writeStatusScript()) {
+          cur.statusLine = { type: "command", command: `node "${STATUS_SCRIPT}"` };
+          statusLine = STATUS_SCRIPT;
+        }
         // 本物のキーが残っていると、そちらが先に使われて中継で断られる
         if (cur.env.ANTHROPIC_API_KEY && !String(cur.env.ANTHROPIC_API_KEY).startsWith("sbk_")) {
           delete cur.env.ANTHROPIC_API_KEY;
@@ -269,10 +326,7 @@ async function main() {
     (tzr && tzr.tz ? ` (resets at midnight, ${tzr.tz}).\n` : ".\n"));
   if (tested === "ok") console.log(bold("✓ Checked:") + ` your ${provider} key works through Saifuban.\n`);
   else if (tested) console.log(bold("✗ Check failed") + ` (${tested}). Your key may be wrong; you can replace it on the dashboard.\n`);
-  if (created && !saved) {
-    console.log(bold("Your Saifuban passphrase") + " (your account; save it in a password manager, don't share it):");
-    console.log("  " + owner + "\n");
-  }
+
   const KV = P.keyVar;
   if (savedTo) {
     console.log(bold("Saved") + ` to ${savedTo}. Start a new Claude Code session and it goes through Saifuban.`);
@@ -297,9 +351,9 @@ async function main() {
   if (!pkey) console.log(dim(`Add your ${provider} API key in Settings on the dashboard before the first call.\n`));
   // 管理画面: ログイン済みで開くリンク(合言葉は # の後ろなので、サーバーには送られない)
   const link = SITE + "#k=" + owner;
-  console.log(bold("Dashboard") + " (spending, budgets, approvals), opens already signed in. Keep this link to yourself:");
+  console.log(bold("Dashboard") + " (spending, budgets, approvals). This link signs you in, so keep it to yourself and bookmark the page after opening it:");
   console.log("  " + link + "\n");
-  if (saved) console.log(dim(`Your account is saved in ${CONF}; running this command again reuses it.\n`));
+  if (statusLine) console.log(dim(`Claude Code's status line now shows the money left today (${statusLine}).\n`));
   if (args.includes("--open")) {
     const cmd = process.platform === "win32" ? ["cmd", ["/c", "start", "", link]] : process.platform === "darwin" ? ["open", [link]] : ["xdg-open", [link]];
     try { spawnSync(cmd[0], cmd[1], { stdio: "ignore" }); } catch { /* */ }

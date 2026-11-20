@@ -37,9 +37,44 @@ type Usage = {
   searches: number; toolIds: Set<string>; fileSearches: number; groundedQueries: number; grounded: boolean;
   // 最後の利用量(出力トークンの確定値)まで届いたか。届かずに切れたら、見積もり額で計上する
   final: boolean;
+  // 実際に流れてきた出力の量(バイト)。途中で切れたときの見積もりに使う
+  outBytes: number;
 };
 const newUsage = (model: string): Usage => ({ model, input: 0, output: 0, cacheWrite: 0, cacheRead: 0, cost: null, seen: false,
-  searches: 0, toolIds: new Set(), fileSearches: 0, groundedQueries: 0, grounded: false, final: false });
+  searches: 0, toolIds: new Set(), fileSearches: 0, groundedQueries: 0, grounded: false, final: false, outBytes: 0 });
+const enc = new TextEncoder();
+const bytes = (v: unknown) => (typeof v === "string" ? enc.encode(v).length : 0);
+// ストリームの1イベントに入っている「書かれた出力」の量を数える(本文・考えた内容・ツールの引数)
+function deltaBytes(o: Record<string, any>): number {
+  let n = 0;
+  const d = o.delta;
+  if (d && typeof d === "object") n += bytes(d.text) + bytes(d.thinking) + bytes(d.partial_json); // Anthropic
+  else if (typeof d === "string" && /delta/.test(String(o.type || ""))) n += bytes(d); // OpenAI Responses
+  for (const c of Array.isArray(o.choices) ? o.choices : []) { // OpenAI Chat
+    const cd = c?.delta || {};
+    n += bytes(cd.content) + bytes(cd.reasoning) + bytes(cd.reasoning_content);
+    for (const t of Array.isArray(cd.tool_calls) ? cd.tool_calls : []) n += bytes(t?.function?.arguments);
+  }
+  for (const c of Array.isArray(o.candidates) ? o.candidates : []) { // Google
+    for (const pt of Array.isArray(c?.content?.parts) ? c.content.parts : []) n += bytes(pt?.text) + (pt?.functionCall ? bytes(JSON.stringify(pt.functionCall)) : 0);
+  }
+  return n;
+}
+// 途中で切れた呼び出しの金額: 実際に流れた分から多めに見積もる(予約額が上限)
+//   入力 = 届いた利用量(Anthropic は最初に届く)か、本文の大きさからの見積もり
+//   出力 = 届いた利用量か、流れた文字の量÷2.5(多めに数える)の大きい方 + 切断の前後で書かれていた分の余裕(1割か256の大きい方)
+async function cutUsage(provider: string, model: string, u: Usage, estInTokens: number, estUsd: number): Promise<Usage> {
+  const inTok = Math.max(u.input + u.cacheRead + u.cacheWrite, u.seen ? 0 : estInTokens) || estInTokens;
+  const seenOut = Math.max(u.output, Math.ceil(u.outBytes / 2.5));
+  const outTok = seenOut + Math.max(256, Math.ceil(seenOut * 0.1));
+  let usd = estUsd;
+  try {
+    const { data } = await db.rpc("sb_proxy_estimate_usd", { p_provider: provider, p_model: model, p_in: inTok, p_out: outTok });
+    const v = Number(data);
+    if (Number.isFinite(v) && v >= 0) usd = Math.min(v, estUsd);
+  } catch { /* 見積もれなければ予約額 */ }
+  return { ...newUsage(`${model || "unknown"} (cut: estimated from what streamed)`), input: inTok, output: outTok, cost: usd, seen: true };
+}
 
 // トークン以外の料金(USD)。各社の公開価格(2026年11月時点)。迷う場合は高い方で数える
 //   Anthropic のウェブ検索: 1回 $0.01 / OpenAI のウェブ検索: 1回 最大 $0.025 / OpenAI のファイル検索: 1回 $0.0025
@@ -100,6 +135,7 @@ function absorb(u: Usage, obj: unknown) {
   const model = o.model ?? o.message?.model ?? o.response?.model ?? o.modelVersion;
   if (typeof model === "string" && model) u.model = model;
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  u.outBytes += deltaBytes(o);
   // 最後の利用量が届いたか(Anthropic: message_delta / OpenAI: 利用量つきの最後のチャンク・response.completed / Google: finishReason)
   if (o.type === "message_delta" || o.type === "message_stop" || o.type === "response.completed" || o.type === "response.incomplete" ||
       (o.object === "chat.completion.chunk" && o.usage) || (Array.isArray(o.candidates) && o.candidates.some((c: any) => c?.finishReason))) u.final = true;
@@ -200,7 +236,7 @@ async function relayOk(req: Request) {
 async function relaySettle(req: Request, url: URL) {
   const slot = Number(url.searchParams.get("slot"));
   if (!Number.isFinite(slot) || slot <= 0) return new Response(JSON.stringify({ error: "bad_slot" }), { status: 400 });
-  const { data: row } = await db.from("proxy_inflight").select("provider, model, est_usd, is_generation, settled_at").eq("id", slot).maybeSingle();
+  const { data: row } = await db.from("proxy_inflight").select("provider, model, est_usd, est_in, is_generation, settled_at").eq("id", slot).maybeSingle();
   if (!row) return new Response(JSON.stringify({ error: "unknown_slot" }), { status: 404 });
   const provider = String(row.provider || "");
   const status = Number(url.searchParams.get("status") || "0");
@@ -217,7 +253,9 @@ async function relaySettle(req: Request, url: URL) {
     if (!isSse) usage.final = true;
     const complete = usage.final || (normalEnd && usage.seen && usage.output > 0);
     const cut = row.is_generation && !complete && row.est_usd != null;
-    r = await (cut ? settle(slot, provider, estimate("stream cut"), "cancelled") : settle(slot, provider, usage));
+    r = await (cut
+      ? settle(slot, provider, await cutUsage(provider, String(usage.model || row.model || ""), usage, Number(row.est_in) || 0, Number(row.est_usd)), "cancelled")
+      : settle(slot, provider, usage));
   } else if (!normalEnd && row.is_generation && row.est_usd != null) {
     r = await settle(slot, provider, estimate("relay error"), "cancelled");
   }
@@ -305,7 +343,7 @@ Deno.serve(async (req) => {
   if (gate.error) return errorResponse(provider, 403, "permission_error", gate.reason || gate.error, gate.lang);
   const release = releaser(gate.slot);
   // 精算に使う見積もり(Worker 経由のときは、あとで別の呼び出しで精算するので保存しておく)
-  await db.from("proxy_inflight").update({ est_usd: gate.estimate_usd ?? null, is_generation: isGeneration }).eq("id", gate.slot);
+  await db.from("proxy_inflight").update({ est_usd: gate.estimate_usd ?? null, est_in: estIn, is_generation: isGeneration }).eq("id", gate.slot);
   let contacted = false; // APIにリクエストが届いたか(届いた後の失敗は、0円にせず予約額で計上する)
   const estimate = (why: string): Usage => ({ ...newUsage(`${estModel || "unknown"} (estimate: ${why})`), cost: gate.estimate_usd, seen: true });
   // この中継は1回の処理に時間の上限がある(無料プランは150秒)。上限の少し前に、いったん見積もり額で精算しておく。
@@ -425,7 +463,7 @@ Deno.serve(async (req) => {
         // (最後まで正常に流れ終わり、出力トークン数が分かっている場合は、その数で精算する)
         const complete = usage.final || (normalEnd && usage.seen && usage.output > 0);
         const cut = isGeneration && !complete && typeof gate.estimate_usd === "number";
-        const r = await (cut ? settle(gate.slot, provider, estimate("stream cut"), "cancelled") : settle(gate.slot, provider, usage))
+        const r = await (cut ? settle(gate.slot, provider, await cutUsage(provider, usage.model || estModel, usage, estIn, gate.estimate_usd), "cancelled") : settle(gate.slot, provider, usage))
           .catch((e) => { console.error("settle", e); return "failed" as const; });
         if (r === "none") await release(); // 利用がなかったときだけ0円で閉じる
       };
