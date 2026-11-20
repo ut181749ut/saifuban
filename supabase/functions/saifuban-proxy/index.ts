@@ -176,6 +176,26 @@ async function countInputTokens(provider: string, path: string, j: Record<string
   return -1;
 }
 
+// Claude Code に「予算の75%・95%を使いました」と出してもらうための応答ヘッダー
+// (Claude Code が支払い上限つきの中継から受け取る形と同じ。上流の同名ヘッダーは消して、このAIの予算の値だけを返す)
+function limitHeaders(provider: string, gate: Record<string, any>): Record<string, string> {
+  const util = Number(gate?.util), reset = Number(gate?.reset_epoch);
+  if (provider !== "anthropic" || !Number.isFinite(util) || !Number.isFinite(reset)) return {};
+  const th = util > 0.95 ? "0.95" : util > 0.75 ? "0.75" : "";
+  const status = th ? "allowed_warning" : "allowed";
+  const h: Record<string, string> = {
+    "anthropic-ratelimit-unified-status": status,
+    "anthropic-ratelimit-unified-representative-claim": "overage",
+    "anthropic-ratelimit-unified-overage-status": status,
+    "anthropic-ratelimit-unified-overage-utilization": util.toFixed(2),
+    "anthropic-ratelimit-unified-reset": String(reset),
+    "anthropic-ratelimit-unified-overage-reset": String(reset),
+  };
+  if (th) h["anthropic-ratelimit-unified-overage-surpassed-threshold"] = th;
+  return h;
+}
+const stripUnified = (h: Headers) => { for (const k of [...h.keys()]) if (k.toLowerCase().startsWith("anthropic-ratelimit-unified-")) h.delete(k); };
+
 function errorResponse(provider: string, status: number, type: string, message: string, lang?: string, extra: Record<string, string> = {}) {
   // 持ち主の言語が分かるときはその言語で、分からないときは日本語と英語の両方で返す
   const prefix = lang === "en" ? "[Saifuban]" : lang === "ja" ? "[AIの財布番]" : "[AIの財布番 / Saifuban]";
@@ -412,8 +432,17 @@ Deno.serve(async (req) => {
   // 予算切れ: Claude Code などがやり直さないよう x-should-retry: false を付け、リセットまでの秒数を Retry-After に入れる
   if (gate.error && gate.kind === "budget") {
     const secs = Math.max(60, Math.ceil((Date.parse(gate.reset_at) - Date.now()) / 1000) || 3600);
-    return errorResponse(provider, 429, provider === "anthropic" ? "billing_error" : "insufficient_quota", gate.reason, gate.lang,
-      { "Retry-After": String(secs), "x-should-retry": "false", "x-saifuban-reset-at": String(gate.reset_at) });
+    const resetEpoch = String(Math.floor(Date.parse(gate.reset_at) / 1000) || "");
+    return errorResponse(provider, 429, provider === "anthropic" ? "billing_error" : "insufficient_quota", gate.reason, gate.lang, {
+      "Retry-After": String(secs), "x-should-retry": "false", "x-saifuban-reset-at": String(gate.reset_at),
+      // 予算切れ: Claude Code はこのヘッダーを見て「上限に達した」と扱い、メッセージをそのまま表示する
+      ...(provider === "anthropic" ? {
+        "anthropic-ratelimit-unified-status": "rejected", "anthropic-ratelimit-unified-reset": resetEpoch,
+        "anthropic-ratelimit-unified-overage-reset": resetEpoch, "anthropic-ratelimit-unified-overage-utilization": "1",
+        "anthropic-ratelimit-unified-overage-surpassed-threshold": "1", "anthropic-ratelimit-unified-overage-period": String(gate.period || "daily"),
+        "anthropic-ratelimit-unified-overage-disabled-reason": "org_spend_cap_reached",
+      } : {}),
+    });
   }
   if (gate.error && gate.status === 429) return errorResponse(provider, 429, "rate_limit_error", gate.reason, gate.lang);
   if (gate.error) return errorResponse(provider, 403, "permission_error", gate.reason || gate.error, gate.lang);
@@ -486,6 +515,7 @@ Deno.serve(async (req) => {
         ok: true, slot: gate.slot, url: target.toString(), method,
         headers: Object.fromEntries(headers.entries()), body: changedBody, remaining_jpy: gate.remaining_jpy,
         capped: gate.shrunk_from ? `${gate.shrunk_from}->${gate.out_max}` : null,
+        out_headers: limitHeaders(provider, gate),
       }), { status: 200, headers: { "Content-Type": "application/json", "x-saifuban-gate": "ok", "Cache-Control": "no-store" } });
     }
 
@@ -504,6 +534,8 @@ Deno.serve(async (req) => {
     outHeaders.delete("content-length");
     outHeaders.set("x-saifuban-remaining-jpy", String(gate.remaining_jpy));
     if (gate.shrunk_from) outHeaders.set("x-saifuban-output-capped", `${gate.shrunk_from}->${gate.out_max}`);
+    stripUnified(outHeaders);
+    if (upstream.ok) for (const [k, v] of Object.entries(limitHeaders(provider, gate))) outHeaders.set(k, v);
 
     const usage: Usage = newUsage(requestModel || (path.match(/models\/([^/:]+)/)?.[1] ?? ""));
     const ctype = upstream.headers.get("content-type") || "";

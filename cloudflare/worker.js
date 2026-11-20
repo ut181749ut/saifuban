@@ -65,6 +65,9 @@ async function proxy(req, env, ctx, u) {
   out.delete("content-encoding");
   out.delete("content-length");
   out.set("x-saifuban-remaining-jpy", String(plan.remaining_jpy));
+  // 上流の利用上限ヘッダー(共有のキーの値)は消して、このAIの予算の値(関門が作ったもの)だけを返す
+  for (const k of [...out.keys()]) if (k.toLowerCase().startsWith("anthropic-ratelimit-unified-")) out.delete(k);
+  if (up.ok && plan.out_headers) for (const [k, v] of Object.entries(plan.out_headers)) out.set(k, String(v));
   const sse = (up.headers.get("content-type") || "").includes("text/event-stream");
   if (!up.body) {
     ctx.waitUntil(settle(up.status, null, true, sse, false));
