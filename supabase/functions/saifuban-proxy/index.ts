@@ -113,6 +113,69 @@ function extraEstimateUsd(provider: string, model: string, body: Record<string, 
   return usd;
 }
 
+// 検索・取得の結果は「入力」として請求される。予約のときに、その分の入力も見込む
+//   Anthropic のウェブ検索: 1回あたり最大 8,000 トークン / ウェブ取得: 1回あたり max_content_tokens(なければ 25,000)
+//   OpenAI のウェブ検索: 1回あたり 8,000 トークン(回数の上限が分からないので10回)
+function toolInputTokens(provider: string, body: Record<string, any> | null): number {
+  const tools: any[] = Array.isArray(body?.tools) ? body!.tools : [];
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.min(Math.ceil(v), 100) : 10);
+  let t = 0;
+  for (const x of tools) {
+    const type = String(x?.type ?? "");
+    if (provider === "anthropic" && type.startsWith("web_search")) t += n(x.max_uses) * 8000;
+    if (provider === "anthropic" && type.startsWith("web_fetch")) t += n(x.max_uses) * (Number(x.max_content_tokens) > 0 ? Math.ceil(Number(x.max_content_tokens)) : 25000);
+    if (provider === "openai" && type.startsWith("web_search")) t += 10 * 8000;
+  }
+  return t;
+}
+
+// 本文に入っていない中身(サーバー側の会話・アップロード済みのファイル・URLの文書など)を参照している呼び出しか
+function referencesOutside(provider: string, j: Record<string, any> | null): boolean {
+  if (!j) return false;
+  const s = JSON.stringify(j);
+  if (provider === "openai") {
+    if (j.previous_response_id || j.conversation || j.prompt?.id) return true;
+    if (/"file_id"\s*:|"type"\s*:\s*"input_file"/.test(s)) return true;
+    if (Array.isArray(j.tools) && j.tools.some((t: any) => t?.type === "mcp" || t?.type === "file_search")) return true;
+  }
+  if (provider === "anthropic") {
+    if (j.mcp_servers || j.container) return true;
+    if (/"source"\s*:\s*\{[^{}]*"type"\s*:\s*"(file|url)"/.test(s)) return true;
+  }
+  if (provider === "google") {
+    if (j.cachedContent || /"fileData"|"file_data"|"fileUri"|"file_uri"/.test(s)) return true;
+  }
+  return false;
+}
+const pickKeys = (o: Record<string, any>, keys: string[]) => Object.fromEntries(keys.filter((k) => o[k] !== undefined).map((k) => [k, o[k]]));
+// 入力のトークン数を、各社の「数えるだけ」の窓口(無料)で先に数える。数えられなければ -1
+async function countInputTokens(provider: string, path: string, j: Record<string, any>, providerKey: string, req: Request): Promise<number> {
+  try {
+    const sig = AbortSignal.timeout(6000);
+    if (provider === "anthropic" && /\/v1\/messages\/?$/.test(path)) {
+      const h: Record<string, string> = { "content-type": "application/json", "x-api-key": providerKey, "anthropic-version": req.headers.get("anthropic-version") || "2023-06-01" };
+      const beta = req.headers.get("anthropic-beta"); if (beta) h["anthropic-beta"] = beta;
+      const r = await fetch(UPSTREAM.anthropic + "/v1/messages/count_tokens", { method: "POST", headers: h, signal: sig,
+        body: JSON.stringify(pickKeys(j, ["model", "messages", "system", "tools", "tool_choice", "thinking", "mcp_servers"])) });
+      const d = await r.json(); return r.ok && Number(d.input_tokens) > 0 ? Number(d.input_tokens) : -1;
+    }
+    if (provider === "openai" && /\/responses\/?$/.test(path)) {
+      const r = await fetch(UPSTREAM.openai + "/v1/responses/input_tokens", { method: "POST", signal: sig,
+        headers: { "content-type": "application/json", authorization: `Bearer ${providerKey}` },
+        body: JSON.stringify(pickKeys(j, ["model", "input", "instructions", "previous_response_id", "conversation", "tools", "tool_choice", "reasoning", "text", "parallel_tool_calls", "truncation", "prompt"])) });
+      const d = await r.json(); return r.ok && Number(d.input_tokens) > 0 ? Number(d.input_tokens) : -1;
+    }
+    const gm = path.match(/^(\/v1(?:beta)?)\/models\/([^/:]+):(?:stream)?generateContent/);
+    if (provider === "google" && gm) {
+      const r = await fetch(`${UPSTREAM.google}${gm[1]}/models/${gm[2]}:countTokens`, { method: "POST", signal: sig,
+        headers: { "content-type": "application/json", "x-goog-api-key": providerKey },
+        body: JSON.stringify({ generateContentRequest: { model: `models/${gm[2]}`, ...pickKeys(j, ["contents", "systemInstruction", "tools", "toolConfig", "cachedContent"]) } }) });
+      const d = await r.json(); return r.ok && Number(d.totalTokens) > 0 ? Number(d.totalTokens) + (Number(d.cachedContentTokenCount) || 0) : -1;
+    }
+  } catch { /* 数えられなければ下の見積もり */ }
+  return -1;
+}
+
 function errorResponse(provider: string, status: number, type: string, message: string, lang?: string, extra: Record<string, string> = {}) {
   // 持ち主の言語が分かるときはその言語で、分からないときは日本語と英語の両方で返す
   const prefix = lang === "en" ? "[Saifuban]" : lang === "ja" ? "[AIの財布番]" : "[AIの財布番 / Saifuban]";
@@ -314,7 +377,7 @@ Deno.serve(async (req) => {
   // 入力は本文の大きさから多めに見積もる(3バイト=1トークン)。出力は指定された上限。
   // 指定がなければ -1 を渡し、財布番が「モデルの最大と32,768の小さい方」を上限に決めて、リクエストに書き込む
   // (予約より長く書かれて上限を超えることがないように)
-  const estIn = raw ? Math.ceil(raw.byteLength / 3) : 0;
+  let estIn = raw ? Math.ceil(raw.byteLength / 3) : 0;
   const givenOut = num(parsed?.max_tokens) || num(parsed?.max_completion_tokens) || num(parsed?.max_output_tokens) ||
     num(parsed?.generationConfig?.maxOutputTokens);
   const estOut = !isGeneration || /embeddings|embedContent/.test(path) ? 0 : (givenOut || (parsed ? -1 : 16384));
@@ -324,6 +387,19 @@ Deno.serve(async (req) => {
   const thinkBudget = num(parsed?.thinking?.budget_tokens) || num(parsed?.generationConfig?.thinkingConfig?.thinkingBudget);
   const minOut = parsed && isGeneration && !/embeddings|embedContent/.test(path) ? Math.max(4096, thinkBudget ? thinkBudget + 1024 : 0) : 0;
 
+  if (isGeneration) {
+    // 検索・取得の結果として足される入力も見込む
+    estIn += toolInputTokens(provider, parsed);
+    // 本文の外にある中身を参照しているときは、入力を先に数えてから予約する(数えられなければ 32,000 トークンとみなす)
+    if (referencesOutside(provider, parsed)) {
+      const pre = await db.rpc("sb_proxy_begin", { p_key: key, p_provider: provider });
+      const pk = pre.data && !pre.data.error ? String(pre.data.provider_key || "") : "";
+      if (pk) {
+        const counted = await countInputTokens(provider, path, parsed!, pk, req);
+        estIn = Math.max(estIn, counted > 0 ? counted + toolInputTokens(provider, parsed) : 32000);
+      }
+    }
+  }
   const { data: gate, error: gateErr } = await db.rpc("sb_proxy_begin_v5", {
     p_key: key, p_provider: provider, p_model: estModel, p_in_est: estIn, p_out_max: estOut,
     p_extra_usd: isGeneration ? extraEstimateUsd(provider, estModel, parsed) : 0, p_choices: choices, p_min_out: minOut,
