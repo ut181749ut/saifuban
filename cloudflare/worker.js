@@ -80,7 +80,7 @@ async function proxy(req, env, ctx, u) {
   const reader = up.body.getReader();
   const head = []; let headSize = 0;
   const tail = []; let tailSize = 0;
-  let truncated = false, finished = false;
+  let truncated = false, finished = false, killed = false, watch;
   const keep = (value) => {
     if (headSize < HEAD_MAX) { head.push(value); headSize += value.byteLength; return; }
     tail.push(value); tailSize += value.byteLength;
@@ -89,6 +89,7 @@ async function proxy(req, env, ctx, u) {
   const done = (normal) => {
     if (finished) return;
     finished = true;
+    clearInterval(watch);
     const all = new Uint8Array(headSize + tailSize);
     let off = 0;
     for (const c of head) { all.set(c, off); off += c.byteLength; }
@@ -99,7 +100,10 @@ async function proxy(req, env, ctx, u) {
     async pull(ctrl) {
       try {
         const { done: end, value } = await reader.read();
-        if (end) { ctrl.close(); done(true); return; }
+        if (end) {
+          if (killed) { ctrl.error(new Error("superseded by a retry")); return; }
+          ctrl.close(); done(true); return;
+        }
         keep(value);
         ctrl.enqueue(value);
       } catch (e) {
@@ -113,6 +117,21 @@ async function proxy(req, env, ctx, u) {
       done(false);
     },
   });
+  // やり直し(同じ呼び出しの再送)が来て置き換えられたら、上流を切って届いた分で精算する。
+  // 客の接続が切れたのにここで気づけなかった場合に、誰も受け取らない出力を書かせ続けないため
+  if (plan.watch && plan.watch.key) {
+    watch = setInterval(async () => {
+      if (finished) { clearInterval(watch); return; }
+      try {
+        const r = await fetch(plan.watch.url, {
+          method: "POST",
+          headers: { apikey: plan.watch.key, authorization: "Bearer " + plan.watch.key, "content-type": "application/json" },
+          body: JSON.stringify({ p_slot: plan.slot, p_token: plan.watch.token }),
+        });
+        if ((await r.json()) === true && !finished) { killed = true; reader.cancel().catch(() => {}); done(false); }
+      } catch { /* 見られなかったら次の回に */ }
+    }, 3000);
+  }
   return new Response(toClient, { status: up.status, headers: out });
 }
 

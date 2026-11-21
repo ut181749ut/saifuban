@@ -420,6 +420,25 @@ Deno.serve(async (req) => {
       }
     }
   }
+  // やり直し(SDKの再送)かどうか。前の呼び出しが切れたのに気づけず残っていたら、それを止めてから予約する
+  // (同じ呼び出しを二重に予約・二重に流さない)。印は idempotency key、なければ本文そのもの(再送は本文が同じ)
+  let retryKey: string | null = null;
+  if (isGeneration && raw) {
+    const idem = (req.headers.get("idempotency-key") || req.headers.get("x-idempotency-key") || "").trim().slice(0, 200);
+    retryKey = idem ? "k:" + idem : "h:" + Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", raw)), (b) => b.toString(16).padStart(2, "0")).join("");
+    const isRetry = !!idem || Number(req.headers.get("x-stainless-retry-count") || "0") > 0;
+    if (isRetry) {
+      const { data: old } = await db.rpc("sb_proxy_supersede", { p_key: key, p_slot: null, p_retry_key: retryKey, p_is_retry: true });
+      // 前の流れは数秒ごとに印を見て止まり、届いた分で精算する。最大6秒待つ(間に合わなければそのまま進む)
+      if (Array.isArray(old) && old.length) {
+        for (let t = 0; t < 20; t++) {
+          await new Promise((r) => setTimeout(r, 300));
+          const { data: open } = await db.rpc("sb_proxy_slots_open", { p_ids: old });
+          if (!open) break;
+        }
+      }
+    }
+  }
   const { data: gate, error: gateErr } = await db.rpc("sb_proxy_begin_v5", {
     p_key: key, p_provider: provider, p_model: estModel, p_in_est: estIn, p_out_max: estOut,
     p_extra_usd: isGeneration ? extraEstimateUsd(provider, estModel, parsed) : 0, p_choices: choices, p_min_out: minOut,
@@ -448,7 +467,8 @@ Deno.serve(async (req) => {
   if (gate.error) return errorResponse(provider, 403, "permission_error", gate.reason || gate.error, gate.lang);
   const release = releaser(gate.slot);
   // 精算に使う見積もり(Worker 経由のときは、あとで別の呼び出しで精算するので保存しておく)
-  await db.from("proxy_inflight").update({ est_usd: gate.estimate_usd ?? null, est_in: estIn, is_generation: isGeneration }).eq("id", gate.slot);
+  const watchToken = isGeneration ? Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("") : null;
+  await db.from("proxy_inflight").update({ est_usd: gate.estimate_usd ?? null, est_in: estIn, is_generation: isGeneration, retry_key: retryKey, watch_token: watchToken }).eq("id", gate.slot);
   let contacted = false; // APIにリクエストが届いたか(届いた後の失敗は、0円にせず予約額で計上する)
   const estimate = (why: string): Usage => ({ ...newUsage(`${estModel || "unknown"} (estimate: ${why})`), cost: gate.estimate_usd, seen: true });
   // この中継は1回の処理に時間の上限がある(無料プランは150秒)。上限の少し前に、いったん見積もり額で精算しておく。
@@ -516,6 +536,8 @@ Deno.serve(async (req) => {
         headers: Object.fromEntries(headers.entries()), body: changedBody, remaining_jpy: gate.remaining_jpy,
         capped: gate.shrunk_from ? `${gate.shrunk_from}->${gate.out_max}` : null,
         out_headers: limitHeaders(provider, gate),
+        // 流しているあいだ数秒ごとに「やり直しで置き換えられたか」を見る先(関数の呼び出しを使わず、データベースに直接聞く)
+        watch: watchToken ? { url: Deno.env.get("SUPABASE_URL") + "/rest/v1/rpc/sb_slot_superseded", key: Deno.env.get("SUPABASE_ANON_KEY") || "", token: watchToken } : null,
       }), { status: 200, headers: { "Content-Type": "application/json", "x-saifuban-gate": "ok", "Cache-Control": "no-store" } });
     }
 
@@ -577,18 +599,27 @@ Deno.serve(async (req) => {
       };
       const piped = upstream.body.pipeThrough(tap);
       const reader = piped.getReader();
+      // やり直しで置き換えられたら(前の接続が切れていたのに気づけなかった場合)、上流を切って届いた分で精算する
+      let killed = false;
+      const watch = isGeneration ? setInterval(async () => {
+        const { data: row } = await db.from("proxy_inflight").select("superseded_at, settled_at").eq("id", gate.slot).maybeSingle();
+        if (finished) { clearInterval(watch); return; }
+        if (row?.superseded_at && !killed) { killed = true; clearInterval(watch); reader.cancel().catch(() => {}); await finish(false); }
+      }, 3000) : undefined;
       const guarded = new ReadableStream<Uint8Array>({
         async pull(ctrl) {
           try {
             const { done, value } = await reader.read();
-            if (done) { ctrl.close(); await finish(true); return; }
+            if (done) { clearInterval(watch); if (killed) { ctrl.error(new Error("superseded by a retry")); return; } ctrl.close(); await finish(true); return; }
             ctrl.enqueue(value);
           } catch (e) {
+            clearInterval(watch);
             ctrl.error(e);
             await finish(false);
           }
         },
         async cancel() {
+          clearInterval(watch);
           reader.cancel().catch(() => {});
           await finish(false);
         },
