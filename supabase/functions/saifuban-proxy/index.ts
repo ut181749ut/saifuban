@@ -429,13 +429,16 @@ Deno.serve(async (req) => {
     const isRetry = !!idem || Number(req.headers.get("x-stainless-retry-count") || "0") > 0;
     if (isRetry) {
       const { data: old } = await db.rpc("sb_proxy_supersede", { p_key: key, p_slot: null, p_retry_key: retryKey, p_is_retry: true });
-      // 前の流れは数秒ごとに印を見て止まり、届いた分で精算する。最大6秒待つ(間に合わなければそのまま進む)
+      // 前の流れは数秒ごとに印を見て止まり、届いた分で精算する。待つのは最大6秒。
+      // 間に合わなければ(固まった接続など)前の分をいったん予約額で計上して枠を空け、終わったら実際の額に直す。
+      // やり直しを待たせ続けると、クライアントがまたやり直して呼び出しが積み重なるため
       if (Array.isArray(old) && old.length) {
-        for (let t = 0; t < 20; t++) {
+        let open = 1;
+        for (let t = 0; t < 20 && open; t++) {
           await new Promise((r) => setTimeout(r, 300));
-          const { data: open } = await db.rpc("sb_proxy_slots_open", { p_ids: old });
-          if (!open) break;
+          ({ data: open } = await db.rpc("sb_proxy_slots_open", { p_ids: old }));
         }
+        if (open) await db.rpc("sb_proxy_hold", { p_ids: old });
       }
     }
   }
