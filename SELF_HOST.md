@@ -58,6 +58,8 @@ For `RELAY_SECRET`, paste the value from:
 select decrypted_secret from vault.decrypted_secrets where name = 'saifuban_relay_secret';
 ```
 
+If you'd rather not paste code by hand, connect the repo in the Cloudflare dashboard (Worker → Settings → Builds → Connect, root directory `cloudflare`). `cloudflare/wrangler.jsonc` is already there, so every push to main redeploys the Worker.
+
 Then set two plain variables on the Worker (Settings → Variables): `SUPABASE_URL` = `https://<ref>.supabase.co` and `PUBLIC_BASE` = the Worker's own address. The Worker only streams bytes. Budget checks, reservations and settlement still happen in Supabase.
 
 ## 4. Create your account and an agent

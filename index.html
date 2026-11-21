@@ -120,6 +120,12 @@ code,.urlbox{font-family:var(--f-body);font-size:12px;word-break:break-all;white
 .m-wait{color:var(--hold)}
 .m-no{color:var(--shu);text-decoration:line-through}
 .m-stop{color:var(--fade)}
+.topcalls{border:1px solid var(--rule);border-radius:10px;padding:10px 12px;margin:0 0 14px}
+.topcalls .th{display:flex;justify-content:space-between;gap:8px;align-items:baseline;margin-bottom:4px}
+.topcalls .th .num{color:var(--fade);font-size:12px}
+.topcalls .item{grid-template-columns:auto 1fr}
+.topcalls .item:last-of-type{border-bottom:0}
+.topcalls .tip{margin:8px 0 0;font-size:13px;line-height:1.5}
 .log .item.voided .num{text-decoration:line-through;color:var(--fade)}
 /* AIとルール・設定 */
 .rule{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}
@@ -506,13 +512,27 @@ function render(){
     <div class="why">${esc(r.reason||"(理由なし)")}</div>
     ${r.status==="pending"?`<div class="acts"><button data-no="${r.id}">却下する</button><button class="approve" data-ok="${r.id}" aria-label="承認する">承認</button></div>`:`<div class="stamp">承認</div>`}
   </div>`).join(""):`<div class="empty">${D.agents.length?"いま判断が必要なものはありません。":"まだAIがつながっていません。<br>上の「AIをつなぐ」から始めてください。"}</div>`;
-  $("tab-log").innerHTML=D.requests.length?D.requests.map(r=>{const[c,l]=PILL[r.status]||["m-stop",r.status];const v=["denied","rejected","expired"].includes(r.status);return `<div class="item${v?" voided":""}">
+  $("tab-log").innerHTML=topCalls()+(D.requests.length?D.requests.map(r=>{const[c,l]=PILL[r.status]||["m-stop",r.status];const v=["denied","rejected","expired"].includes(r.status);return `<div class="item${v?" voided":""}">
     <span class="mark ${c}">${l}</span>
     <div class="m"><div>${esc(r.merchant)}</div><small>${hhmm(r.created_at)} · ${esc(agentName(r.agent_id))}</small><small>${esc(fmtNote(r.note))}${r.reason?" · "+esc(r.reason):""}</small></div>
-    <span class="num">${money(r.amount)}</span></div>`}).join(""):`<div class="empty">まだ記録はありません</div>`;
+    <span class="num">${money(r.amount)}</span></div>`}).join(""):`<div class="empty">まだ記録はありません</div>`);
   if(!$("tab-rules").contains(document.activeElement))renderRules();
   if(!$("tab-setup").contains(document.activeElement))renderSetup();
   renderTop();
+}
+
+// この7日で高かったAPIの呼び出し。一番高いものには、安くするヒントを1つ添える
+function topCalls(){
+  const t=(D&&D.top)||[];
+  if(!t.length)return "";
+  const tok=(r,w)=>{const m=String(r||"").match(new RegExp(w+"(\\d+)"));return m?Number(m[1]):0};
+  const a=t[0],inT=tok(a.reason,"入力"),outT=tok(a.reason,"出力"),model=String(a.reason||"").split(" · ")[0];
+  const tip=inT>=80000?"入力がとても大きい呼び出しです。長くなった会話は /compact か /clear で短くすると、毎回の入力が減って安くなります。"
+    :/opus/i.test(model)&&outT<2000?"Opusで短い答えを出しています。簡単な作業なら Sonnet や Haiku に変えると数分の1の値段になります。"
+    :outT>=16000?"出力がとても長い呼び出しです。max_tokens を小さめにすると、1回あたりの上限が下がります。":"";
+  return `<div class="topcalls"><div class="th"><b>この7日で高かった呼び出し</b><span class="num">7日の合計 ${money(D.week_api||0)}</span></div>
+    ${t.map(r=>`<div class="item"><span class="num">${money(r.amount)}</span><div class="m"><div>${esc(String(r.reason||"").split(" · ")[0]||"API")}</div><small>${esc(r.agent)} · ${hhmm(r.created_at)} · ${esc(String(r.reason||"").split(" · ").slice(1).join(" · "))}</small></div></div>`).join("")}
+    ${tip?`<p class="tip">${tip}</p>`:""}</div>`;
 }
 
 function renderTop(){
