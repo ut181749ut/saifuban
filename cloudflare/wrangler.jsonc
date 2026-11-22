@@ -1,4 +1,4 @@
-// Cloudflare の Worker「saifuban」を GitHub から自動で入れ替えるための設定。
+// Cloudflare の Worker「saifuban」を GitHub から自動で入れ替えるための設定(つないだ: 2026-11-22)。
 // Cloudflare の画面で Worker → Settings → Builds → Connect でこのリポジトリをつなぎ、
 // Root directory を "cloudflare" にすると、main に push するたびに入れ替わる。
 // 画面で設定した変数(SUPABASE_URL など)と合言葉(RELAY_SECRET)は keep_vars で残す。
