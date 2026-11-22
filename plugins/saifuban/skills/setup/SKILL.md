@@ -15,7 +15,7 @@ Set up Saifuban (an open-source proxy that stops API calls once a daily budget i
 3. Run this one command (on Windows use `npx.cmd` instead of `npx`):
 
    ```
-   npx -y https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz --yes --open --budget <BUDGET> --provider <PROVIDER>
+   npx -y saifuban --yes --open --budget <BUDGET> --provider <PROVIDER>
    ```
 
    Always add `--currency`: `JPY` if the user said yen/円 or is writing in Japanese, otherwise `USD`. `--open` opens the user's dashboard in their browser, already signed in.

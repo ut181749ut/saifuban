@@ -7,7 +7,7 @@ allowed-tools: Bash(npx:*), Bash(npx.cmd:*)
 1. Run (on Windows use `npx.cmd`):
 
    ```
-   npx -y https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz status
+   npx -y saifuban status
    ```
 
 2. Answer in one or two short lines in the user's language: spent today, left today, the daily budget, and when it resets.

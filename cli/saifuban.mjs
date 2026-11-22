@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Saifuban setup in one command:  npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
-// (Windows PowerShell: npx.cmd https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz)
+// Saifuban setup in one command:  npx saifuban
+// (Windows PowerShell: npx.cmd saifuban)
 // Creates (or reuses) your Saifuban account, makes an agent with a daily budget,
 // optionally stores your provider API key, and prints the two lines to set.
 // No dependencies. Talks only to the Saifuban API.
@@ -76,7 +76,7 @@ const flag = (name) => { const i = args.indexOf("--" + name); return i >= 0 ? ar
 if (args.includes("--help") || args.includes("-h")) {
   console.log(`Saifuban: a hard daily cap on your AI agent's API bill.
 
-Usage: npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz [--budget 7] [--provider anthropic|openai|openrouter|google] [--yes]
+Usage: npx saifuban [--budget 7] [--provider anthropic|openai|openrouter|google] [--yes]
 
   --budget    daily budget (default $7, or ¥1000 in Japan)
   --currency  USD or JPY (default: JPY in Japan, USD elsewhere)

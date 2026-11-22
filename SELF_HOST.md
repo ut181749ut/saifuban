@@ -67,7 +67,7 @@ Then set two plain variables on the Worker (Settings → Variables): `SUPABASE_U
 ```bash
 SAIFUBAN_API=https://<ref>.supabase.co/functions/v1/saifuban-app \
 SAIFUBAN_RELAY=https://saifuban.<you>.workers.dev/proxy \
-npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
+npx saifuban
 ```
 
 Leave out `SAIFUBAN_RELAY` if you skipped the Worker. The command creates an owner passphrase (`sbo_...`), an agent with a daily budget, stores your provider key, and prints (or saves to `~/.claude/settings.json`) the base URL and agent key.

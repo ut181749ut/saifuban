@@ -7,7 +7,7 @@ allowed-tools: Bash(npx:*), Bash(npx.cmd:*)
 1. Run (on Windows use `npx.cmd`):
 
    ```
-   npx -y https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz off
+   npx -y saifuban off
    ```
 
 2. Tell the user in one or two short lines, in their language, what it said: Saifuban was removed from Claude Code's settings, and a new Claude Code session will talk to Anthropic directly. Their agent and budget are kept on the dashboard, and running `/saifuban:setup` turns it back on.

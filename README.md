@@ -46,7 +46,7 @@ Claude Codeを使っているなら、Claude Codeの中で2行打つだけです
 
 ClaudeやChatGPTの画面で使う場合も、コネクタに下のURLを登録して「許可する」を押すだけです。
 
-ターミナルからなら1行です: `npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz`(WindowsのPowerShellでは `npx.cmd`)。手元に入っているAPIキーを見つけて使うか聞いてくれます。お金をかけずに試すなら、Geminiの無料APIキー([aistudio.google.com/apikey](https://aistudio.google.com/apikey))で「Google Gemini」を選んでください。
+ターミナルからなら1行です: `npx saifuban`(WindowsのPowerShellでは `npx.cmd`)。手元に入っているAPIキーを見つけて使うか聞いてくれます。お金をかけずに試すなら、Geminiの無料APIキー([aistudio.google.com/apikey](https://aistudio.google.com/apikey))で「Google Gemini」を選んでください。
 
 1. サイトで「はじめる」→ 予算を選ぶ → AI用のURLが出る
 2. そのURLをAIに登録(Claude: コネクタ / ChatGPT: 開発者モードのアプリ / Muse: チャットでURLを送る / Cursor・VS Code: MCP設定)
@@ -93,7 +93,7 @@ It creates your account and an agent with a daily cap, stores the Anthropic key 
 **Or from the terminal**, one command:
 
 ```bash
-npx https://github.com/ut181749ut/saifuban/archive/refs/heads/main.tar.gz
+npx saifuban
 ```
 
 On Windows PowerShell use `npx.cmd` instead of `npx`. Git doesn't need to be installed. It finds the API key already in your environment and offers to use it, remembers your account on this computer, and checks GitHub for a newer version on start. For a new account it asks two things at most (budget, and whether to use the key it found); add `--yes` to skip both. Already have an account? Add `--login`.
