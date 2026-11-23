@@ -66,6 +66,9 @@ Deno.serve(async (req) => {
         p_new_name: str(b.name, 60), p_daily: int(b.daily), p_auto: int(b.auto), p_approve: b.approve === true });
     }
 
+    // GitHub・Google でログイン: Supabase のログインで本人を確かめ、つながっている財布番のアカウントに入る(なければ作る)
+    if (action === "social_login") return await socialLogin(str(b.access_token, 4000));
+
     const key = req.headers.get("x-owner-key") || "";
     if (!/^sbo_[0-9a-f]{48}$/.test(key)) return json({ error: "invalid_owner_key" }, 401);
     const K = { p_owner_key: key };
@@ -125,6 +128,9 @@ Deno.serve(async (req) => {
           : { type: "test", lang: "ja", title: "AIの財布番", body: "通知の設定ができました。承認待ちが出たらここに届きます。" });
         return json({ ok: true, ...r });
       }
+      // ログイン中のアカウントに GitHub・Google をつなぐ(次から合言葉なしで入れる)
+      case "social_link": return await socialLink(key, str(b.access_token, 4000));
+      case "identities": return await call("app_identities", K);
       default:
         return json({ error: "unknown_action" }, 400);
     }
@@ -137,4 +143,52 @@ Deno.serve(async (req) => {
 async function sha256(s: string) {
   const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
   return Array.from(h, (x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+// Supabase のログイン(GitHub・Google)を確かめて、本人の情報を返す。確かめたらその場でログアウトさせる(財布番は合言葉で動くため)
+async function authUser(token: string) {
+  if (!token) return null;
+  const { data, error } = await db.auth.getUser(token);
+  if (error || !data?.user) return null;
+  const u = data.user;
+  const provider = String(u.app_metadata?.provider || (u.identities?.[0]?.provider ?? "unknown"));
+  try { await db.auth.admin.signOut(token); } catch { /* 期限切れなどは気にしない */ }
+  return { id: u.id, provider, email: u.email ?? null };
+}
+// この端末用の合言葉を発行する(パスキーでログインしたときと同じ)
+async function deviceKey(owner: string, note: string) {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  const k = "sbo_" + Array.from(bytes, (x) => x.toString(16).padStart(2, "0")).join("");
+  const { error } = await db.from("owner_device_keys").insert({ key_hash: await sha256(k), owner_id: owner, key_hint: k.slice(0, 10) + "…" + note });
+  return error ? null : k;
+}
+async function socialLogin(token: string) {
+  const u = await authUser(token);
+  if (!u) return json({ error: "not_signed_in" }, 401);
+  const { data: idn } = await db.from("owner_identities").select("owner_id").eq("auth_user", u.id).maybeSingle();
+  if (idn) {
+    await db.from("owner_identities").update({ last_login_at: new Date().toISOString() }).eq("auth_user", u.id);
+    const k = await deviceKey(idn.owner_id, ` (${u.provider})`);
+    return k ? json({ ok: true, owner_key: k, created: false, provider: u.provider }) : json({ error: "server_error" }, 500);
+  }
+  // 初めて: アカウントを作ってつなぐ
+  const { data: su, error } = await db.rpc("app_signup", {});
+  if (error || !su?.owner_key) return json({ error: "server_error" }, 500);
+  const { data: o } = await db.rpc("app_owner", { p_key: su.owner_key });
+  const ins = await db.from("owner_identities").insert({ auth_user: u.id, owner_id: o?.id, provider: u.provider, email: u.email, last_login_at: new Date().toISOString() });
+  if (ins.error) return json({ error: "server_error" }, 500);
+  return json({ ok: true, owner_key: su.owner_key, created: true, provider: u.provider });
+}
+async function socialLink(ownerKey: string, token: string) {
+  const { data: o } = await db.rpc("app_owner", { p_key: ownerKey });
+  if (!o?.id) return json({ error: "invalid_owner_key" }, 401);
+  const u = await authUser(token);
+  if (!u) return json({ error: "not_signed_in" }, 401);
+  const { data: idn } = await db.from("owner_identities").select("owner_id").eq("auth_user", u.id).maybeSingle();
+  if (idn && idn.owner_id !== o.id) return json({ error: "already_linked" }, 409);
+  if (!idn) {
+    const ins = await db.from("owner_identities").insert({ auth_user: u.id, owner_id: o.id, provider: u.provider, email: u.email });
+    if (ins.error) return json({ error: "server_error" }, 500);
+  }
+  return json({ ok: true, provider: u.provider });
 }

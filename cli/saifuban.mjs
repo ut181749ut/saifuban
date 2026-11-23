@@ -410,7 +410,8 @@ async function main() {
   if (provider === "anthropic") console.log(dim("If ANTHROPIC_API_KEY (your real key) is also set in that shell, unset it, or it gets used instead.\n"));
   if (!pkey) console.log(dim(`Add your ${provider} API key in Settings on the dashboard before the first call.\n`));
   // 管理画面: ログイン済みで開くリンク(合言葉は # の後ろなので、サーバーには送られない)
-  const link = SITE + "#k=" + owner;
+  // 新しく作ったアカウントなら、開いた画面でまず GitHub・Google をつなぐよう出す
+  const link = SITE + (created ? "#new=" : "#k=") + owner;
   console.log(bold("Dashboard") + " (spending, budgets, approvals). This link signs you in, so keep it to yourself and bookmark the page after opening it:");
   console.log("  " + link + "\n");
   if (statusLine) console.log(dim(`Claude Code's status line now shows the money left today (${statusLine}).\n`));
