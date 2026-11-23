@@ -14,6 +14,8 @@ self.addEventListener("push", (e) => {
     requireInteraction: d.type === "pending" || d.type === "budget",
     data: d,
   };
+  // 買う物の写真(お店の商品画像など)があれば通知に大きく出す
+  if (typeof d.image === "string" && d.image.startsWith("https://")) opt.image = d.image;
   const en = d.lang === "en";
   if (d.type === "pending" && d.approve_url) {
     opt.actions = en

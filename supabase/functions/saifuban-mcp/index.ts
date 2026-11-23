@@ -120,6 +120,7 @@ const TOOLS = [
         reason: { type: "string", description: "なぜこの支払いが必要か。持ち主が承認するときに読む / why this payment is needed (the owner reads this)" },
         recurring: { type: "string", enum: ["none", "week", "month", "year"], description: "サブスク・定期購入・自動更新なら、その間隔を必ず指定する。定期購入は金額に関係なく持ち主の承認が必要 / If this starts or renews a subscription or any recurring charge, set the billing interval. Recurring charges always need the owner's approval, whatever the amount" },
         idempotency_key: { type: "string", maxLength: 200, description: "同じ支払いをやり直すときは同じ値を渡す。新しい申請は作られず、前の申請が返る / Pass the same value when retrying the same payment; the earlier request is returned instead of creating a new one" },
+        image_url: { type: "string", maxLength: 500, description: "買う物の写真のURL(https)。持ち主の承認通知に表示される / https URL of a photo of what you are buying, shown in the owner's approval notification" },
         wait_for_approval_seconds: { type: "integer", minimum: 0, maximum: MAX_WAIT, description: `承認待ちのとき待つ秒数(最大${MAX_WAIT}秒) / seconds to wait for approval` },
       },
       required: ["merchant", "amount", "reason"],
@@ -203,8 +204,8 @@ async function callTool(key: string, name: string, args: Record<string, any>) {
     let r = await api(key, "/request", {
       method: "POST",
       body: JSON.stringify(args.amount_jpy != null && args.amount == null
-        ? { merchant: args.merchant, amount_jpy: args.amount_jpy, reason: args.reason, recurring, idempotency_key: args.idempotency_key }
-        : { merchant: args.merchant, amount: args.amount, currency: args.currency, reason: args.reason, recurring, idempotency_key: args.idempotency_key }),
+        ? { merchant: args.merchant, amount_jpy: args.amount_jpy, reason: args.reason, recurring, idempotency_key: args.idempotency_key, image_url: args.image_url }
+        : { merchant: args.merchant, amount: args.amount, currency: args.currency, reason: args.reason, recurring, idempotency_key: args.idempotency_key, image_url: args.image_url }),
     });
     const dup = Boolean(r?.duplicate);
     if (r?.status === "pending_approval" && args.wait_for_approval_seconds > 0) {
