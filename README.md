@@ -19,6 +19,7 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 - 「聞かずに払う」のを、前に払ったことがある支払先だけにする設定(初めての支払先はスマホで確認)
 - 緊急停止ボタン
 - AIごとに別々のルール
+- 買い物ならAIが商品写真のURLを付けられ、承認通知に写真が出る(何を買おうとしているか一目で分かる)
 - サブスク(定期購入)は金額に関係なく必ずスマホで確認。通知に年額を表示。AIが申告し忘れても、理由や支払先の文言から定期購入らしいものを見つけて確認に回す
 - AIが自分の過去の申請を調べられる(同じ支払いを二重にしないため)
 - APIキーを預ければ、AIエージェントのAPI代も1日・週・月の予算で強制停止(AIには代理のキーだけを渡す)
@@ -173,7 +174,7 @@ Or skip the copy-paste and connect with OAuth: add `https://zrphnuvrsldcycxtdftv
 
 | Tool | What it does |
 |---|---|
-| `request_payment` | Ask whether a payment (`merchant`, `amount`, `currency` JPY/USD, `reason`, `recurring` none/week/month/year) is allowed. Waits up to 45 s for phone approval. Returns a single-use `payment_token` when approved. Subscriptions always need your approval, whatever the amount, and the notification shows the yearly cost. Retrying a request that is still pending returns the same request instead of creating a new one (or pass `idempotency_key`). |
+| `request_payment` | Ask whether a payment (`merchant`, `amount`, `currency` JPY/USD, `reason`, `recurring` none/week/month/year, optional `image_url` shown in the approval notification) is allowed. Waits up to 45 s for phone approval. Returns a single-use `payment_token` when approved. Subscriptions always need your approval, whatever the amount, and the notification shows the yearly cost. Retrying a request that is still pending returns the same request instead of creating a new one (or pass `idempotency_key`). |
 | `check_payment_status` | Check whether a pending request was approved. |
 | `list_payments` | The agent's own past requests (filter by merchant / days), so it can check e.g. whether a Spotify charge was already approved this month and avoid paying twice. |
 | `get_budget` | Remaining budget today, this week and this month, per-transaction limit, auto-approve threshold, allowed merchants. |

@@ -149,7 +149,13 @@ const MSG = {
 };
 const msgs = (l: unknown) => (l === "en" ? MSG.en : MSG.ja);
 
-async function notifyPending(id: number) {
+// 申請に付いた商品写真のURL。https のものだけ通知に載せる
+function imageUrlOf(v: unknown): string | null {
+  if (typeof v !== "string" || v.length > 500) return null;
+  try { const u = new URL(v); return u.protocol === "https:" ? u.href : null; } catch { return null; }
+}
+
+async function notifyPending(id: number, image: string | null = null) {
   const n = await call("sb_notify_prepare", { p_id: id });
   if (!n || n.skip || n.error) return;
   const L = msgs(n.lang);
@@ -170,11 +176,13 @@ async function notifyPending(id: number) {
       type: "pending", id: n.id, title, body, lang: n.lang === "en" ? "en" : "ja",
       short: `${n.merchant} ${amt}`,
       approve_url: `${base}&a=1`, reject_url: `${base}&a=0`, app_url: n.app_url,
+      ...(image ? { image } : {}),
     }).catch((e) => console.error("push", e)));
   }
   if (n.topic) {
     jobs.push(ntfy({
       topic: n.topic, title, message: n.lang === "en" ? body : `${body}\n${n.note}`, priority: 4, tags: ["moneybag"], click: n.app_url,
+      ...(image ? { attach: image } : {}),
       actions: [
         { action: "http", label: L.approve, url: `${base}&a=1`, method: "POST", clear: true },
         { action: "http", label: L.reject, url: `${base}&a=0`, method: "POST", clear: true },
@@ -301,7 +309,7 @@ Deno.serve(async (req) => {
         p_recurring: rec,
         p_idem: idem,
       });
-      if (r && r.status === "pending_approval" && !r.duplicate) await notifyPending(Number(r.request_id));
+      if (r && r.status === "pending_approval" && !r.duplicate) await notifyPending(Number(r.request_id), imageUrlOf(body.image_url));
       return respond(withUsd(await withToken(key, r), p));
     }
     if (route === "/status" && req.method === "GET") {
