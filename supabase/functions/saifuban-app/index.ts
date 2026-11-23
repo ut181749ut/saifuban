@@ -131,6 +131,10 @@ Deno.serve(async (req) => {
       // ログイン中のアカウントに GitHub・Google をつなぐ(次から合言葉なしで入れる)
       case "social_link": return await socialLink(key, str(b.access_token, 4000));
       case "identities": return await call("app_identities", K);
+      // 設定の「アカウントを削除」(画面で2回押したときだけ送られる。念のため確認の文字も見る)
+      case "delete_account":
+        if (b.confirm !== "DELETE") return json({ error: "confirm_required" }, 400);
+        return await call("app_delete_account", K);
       default:
         return json({ error: "unknown_action" }, 400);
     }

@@ -697,6 +697,10 @@ function renderSetup(){
       <div class="full note">本物のAPIキーは財布番が暗号化して保管し、AIにはエージェントキー(sbk_…)だけを渡します。AIの通信は財布番を通るので、今日の予算を使い切った時点で止まり、実際の利用料が履歴に記録されます。</div>
       <div class="full note">AIにはAPIキーの代わりに、つなぐURLの最後にある sbk_… の部分(エージェントキー)を設定します。</div>
       <div class="full note">利用料はOpenRouterでは実費、それ以外はトークン数×料金表の目安(1ドル=${esc(D.usd_jpy)}円)で計算します。呼び出しの前にかかりうる最大額を予約するので、予算を超えて通ることはありません。</div></div>`+keys+`</div></details>`;
+  // アカウントの削除(設定の一番下)
+  $("tab-setup").insertAdjacentHTML("beforeend",`<div class="rule"><div class="head"><b>アカウントを削除</b></div>
+    <div class="full note">AI・予算・履歴・預けたAPIキー・通知の登録・パスキー・GitHub/Googleとのつながりを全部消します。AIに渡したキー(sbk_…)もすぐ使えなくなります。元に戻せません。</div>
+    <div class="full row"><button id="del-account" class="danger">アカウントを削除</button></div></div>`);
 }
 
 function renderRules(){
@@ -751,6 +755,10 @@ document.addEventListener("click",async e=>{
     writeKey(k);showApp();toast("この端末で使えるようになりました");return}
   if(!OWNER)return;
   if(b.id==="refresh"||b.id==="retry"){$("err").hidden=true;return load()}
+  if(b.id==="del-account"){if(delArm!=="account"){delArm="account";b.textContent="本当に全部消す(もう一度押す)";return}
+    delArm=null;b.disabled=true;const r=await api("delete_account",{confirm:"DELETE"});b.disabled=false;
+    if(!r.ok)return toast("削除できませんでした。もう一度お試しください");
+    await disablePush();writeKey(null);OWNER=null;D=null;showWelcome();toast("アカウントを削除しました");return}
   if(b.id==="logout"){if(delArm!=="logout"){delArm="logout";b.textContent="合言葉を保存したら、もう一度押す";return}
     delArm=null;await disablePush();writeKey(null);OWNER=null;D=null;showWelcome();return}
   if(b.dataset.ok){const id=int(b.dataset.ok);const r=await run("decide",{id,approve:true},"承認しました。AIに支払いOKが伝わります");if(r&&r.ok){stampId=id;render();setTimeout(()=>{stampId=null;render()},1200)}return}
