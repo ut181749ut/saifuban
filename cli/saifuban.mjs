@@ -317,7 +317,10 @@ async function main() {
     if (found) {
       const [v, val] = found;
       const also = provider === "anthropic" && !args.includes("--no-settings") ? " and point Claude Code at Saifuban" : "";
-      const ok = YES || !(await ask(`\nFound your key in ${v} (${val.slice(0, 7)}…${val.slice(-4)}). Store it in Saifuban (encrypted)${also}? [Y/n]: `)).toLowerCase().startsWith("n");
+      // 人が答えられないとき(ターミナルでない・パイプ)は、--yes がない限り預けない。黙ってキーを送らないため
+      const canAsk = !!process.stdin.isTTY && !closed;
+      const ok = YES || (canAsk && !(await ask(`\nFound your key in ${v} (${val.slice(0, 7)}…${val.slice(-4)}). Store it in Saifuban (encrypted)${also}? [Y/n]: `)).toLowerCase().startsWith("n"));
+      if (!ok && !canAsk) console.log(dim(`Found a key in ${v} but didn't store it (no terminal to ask you). Run again in a terminal, or add --yes.`));
       if (ok) { pkey = val; if (also) settingsOk = true; }
     }
   }
