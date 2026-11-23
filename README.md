@@ -23,7 +23,7 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 - AIが自分の過去の申請を調べられる(同じ支払いを二重にしないため)
 - APIキーを預ければ、AIエージェントのAPI代も1日・週・月の予算で強制停止(AIには代理のキーだけを渡す)
 - LangChain・CrewAI・OpenAI Agents SDK・Vercel AI SDK・Claude Codeでは、接続先と鍵を差し替えるだけ(コード例は英語版の「Use it from your agent framework」)
-- 日本語・円で使える。メール登録なし・無料
+- 日本語・円で使える。GitHub・Googleでワンタップ(パスワード不要)・無料
 
 財布番はお金を動かしません。カード情報や口座は預かりません。
 

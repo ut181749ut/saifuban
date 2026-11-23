@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>AIの財布番</title>
-<meta name="description" content="AIがお金を使う前に、あなたのスマホに承認を聞きにくる。AIエージェントのAPI代も1日の予算で止める。日本語・円対応、メール登録なし・無料。">
+<meta name="description" content="AIがお金を使う前に、あなたのスマホに承認を聞きにくる。AIエージェントのAPI代も1日の予算で止める。日本語・円対応。GitHub・Googleでワンタップ、パスワード不要・無料。">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#f7f6f2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171716" media="(prefers-color-scheme: dark)">
@@ -324,7 +324,9 @@ async function socialReturn(){
   let mode="login";try{mode=sessionStorage.getItem("saifuban.social")||"login";sessionStorage.removeItem("saifuban.social")}catch(_){}
   if(err)return toast("ログインを取り消しました");
   let tok="";
-  try{const c=await supa();const {data}=await c.auth.exchangeCodeForSession(code);tok=data&&data.session?data.session.access_token:"";try{await c.auth.signOut({scope:"local"})}catch(_){}}catch(_){}
+  try{const c=await supa();const {data}=await c.auth.exchangeCodeForSession(code);tok=data&&data.session?data.session.access_token:""}catch(_){}
+  // ログイン情報はこのブラウザに残さない(ここでログアウトを呼ぶと、サーバーで確かめる前にログインが無効になるので、保存だけ消す。ログアウトはサーバーがする)
+  try{Object.keys(localStorage).filter(k=>k.startsWith("saifuban.auth")).forEach(k=>localStorage.removeItem(k))}catch(_){}
   if(!tok)return toast("ログインできませんでした。もう一度お試しください");
   if(mode==="link"&&OWNER){const r=await api("social_link",{access_token:tok});
     if(r.ok){trackOnce("social_link");toast("つなぎました。次からはボタン1つでログインできます");idsNow();linkFirst=false;ownerReveal=null;showApp()}
@@ -429,7 +431,7 @@ function showWelcome(reason){
     ["財布番が止まったらどうなる?","AIはAPIを呼べなくなり、支払いの許可も出ません。使いすぎる方向ではなく、止まる方向に倒れます。"],
     ["お金は財布番を通る?","通りません。財布番は「使ってよいか」を判断するだけで、カードや口座の情報も受け取りません。"],
     ["料金は?","現在は無料です。有料にする場合は、事前にサイトでお知らせします。"],
-    ["何を保存する?","メールアドレスや名前は受け取りません。合言葉は元に戻せない形で保存し、AIとの会話の中身も保存しません。"],
+    ["何を保存する?","名前や住所は受け取りません。GitHub・Googleではじめた場合だけ、つながりの確認にメールアドレスを保存します(登録なしで試すなら受け取りません)。合言葉は元に戻せない形で保存し、AIとの会話の中身も保存しません。"],
     ["中身を確かめられる?","ソースコードはGitHubで公開しています。上限を破れるか誰でも試せるチャレンジも公開中です。"]];
   const faq=`<details class="more faq"><summary>よくある質問</summary><div class="qa">${QA.map(([q,a])=>`<div><b>${q}</b><p class="note">${a}</p></div>`).join("")}
     <p class="note"><a href="https://github.com/ut181749ut/saifuban" target="_blank" rel="noopener">GitHub</a> · <a href="challenge.html?src=faq">チャレンジ</a> · <a href="privacy.html" target="_blank">プライバシーポリシー</a> · <a href="terms.html" target="_blank">利用規約</a></p></div></details>`;
@@ -446,7 +448,7 @@ function showWelcome(reason){
     <p class="note">ほかのツールは、接続先とキーを差し替えます:</p>
     <code class="urlbox">${setv("ANTHROPIC_BASE_URL",RELAY+"/anthropic")}
 ${setv("ANTHROPIC_AUTH_TOKEN","sbk_…")}</code>
-    <ol class="note steps"><li>はじめる(メール登録なし・無料)</li><li>AIを1つ作って、エージェントキー(sbk_…)を受け取る</li><li>「設定」でAPIキーを預けて、上の2行を設定する</li></ol>
+    <ol class="note steps"><li>GitHub・Googleではじめる(パスワード不要・無料)</li><li>AIを1つ作って、エージェントキー(sbk_…)を受け取る</li><li>「設定」でAPIキーを預けて、上の2行を設定する</li></ol>
     <p class="note">ターミナルなら1行で、登録・AI作成・キー預けまで:</p><code id="npx" class="urlbox">${WIN?"npx.cmd":"npx"} saifuban</code><div class="row"><button data-copy="npx">コマンドをコピー</button></div>
     ${invalid}
     ${iosTip}${socialRow("login")}<div class="row"><button id="signup">登録なしで試す</button><a class="btn" style="color:inherit;text-decoration:none" href="challenge.html?src=site">上限を破れるか試す</a></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。すでに使っている人も、同じボタンでログインできます。</div>${hasPasskey()?`<div class="row"><button id="pk-login">パスキーでログイン</button><span class="note">すでに使っていて、パスキーを登録した人</span></div>`:""}</div>
@@ -458,7 +460,7 @@ ${setv("ANTHROPIC_AUTH_TOKEN","sbk_…")}</code>
     ${LANG==="en"?`<p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>
     <p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>`:`<p class="note">AIに「1日いくらまで」「いくら以下なら聞かずにOK」を決めておくと、それを超える支払いはあなたのスマホに通知が届き、ボタン1つで承認・却下できます。</p>
     <p class="note"><b>API代の使いすぎ防止にも。</b>OpenAI・Anthropic・Google・OpenRouterのAPIキーを預けると、AIエージェントには代理のキーだけを渡し、1日の予算に達した時点でリクエストを止めます。</p>`}
-    <p class="note">Claude・ChatGPT・Muse・Cursorで使えます。Museならチャットに1通送るだけでつながります。日本語・円で使えます。メール登録なし・無料。</p>
+    <p class="note">Claude・ChatGPT・Muse・Cursorで使えます。Museならチャットに1通送るだけでつながります。日本語・円で使えます。GitHub・Googleでワンタップ、パスワード不要・無料。登録なしで試すこともできます。</p>
     ${reason==="invalid"?`<div class="err"><b>この端末の合言葉が使えなくなっています</b><div>もう一度入れ直すか、新しく始めてください。</div></div>`:""}
     ${iosTip}${socialRow("login")}<div class="row"><button id="signup">登録なしで試す</button></div><div class="note">はじめると<a href="terms.html" target="_blank">利用規約</a>と<a href="privacy.html" target="_blank">プライバシーポリシー</a>に同意したことになります。すでに使っている人も、同じボタンでログインできます。</div>${hasPasskey()?`<div class="row"><button id="pk-login">パスキーでログイン</button><span class="note">すでに使っていて、パスキーを登録した人</span></div>`:""}</div>
     <div class="wmedia"><video class="demo" src="${LANG==="en"?"api-en":"demo-ja"}.mp4" autoplay muted loop playsinline preload="metadata"></video></div>
