@@ -63,6 +63,8 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid
 .note{font-size:13px;color:var(--fade);line-height:1.55}
 label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--fade);min-width:0}
 input{font:inherit;font-size:16px;color:var(--ink);background:transparent;border:0;border-bottom:1.5px solid var(--ink);border-radius:0;padding:4px 2px;width:100%;min-width:0}
+textarea{font:inherit;font-size:16px;color:var(--ink);background:transparent;border:1.5px solid var(--ink);border-radius:4px;padding:6px;width:100%;min-width:0;box-sizing:border-box;resize:vertical}
+.mrow{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid var(--line,#ddd)}.mrow>span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mrow button{padding:2px 10px}
 code,.urlbox{font-family:var(--f-body);font-size:12px;word-break:break-all;white-space:pre-wrap;border:1px solid var(--rule);background:var(--card);padding:8px;display:block;user-select:all}
 .hright{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
 .langbtn{font-size:12px;padding:3px 8px;border:1px solid var(--rule);color:var(--fade)}
@@ -705,6 +707,22 @@ function renderSetup(){
     <div class="full row"><button id="del-account" class="danger">アカウントを削除</button></div></div>`);
 }
 
+// みんなで使う(勉強会・ボット): 開いている欄・入力中の名前・参加者一覧を、画面の書き直しで消さないように覚えておく
+const openM=new Set(),mData={},mNames={},mFresh={};
+const localDT=iso=>{const d=new Date(iso);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16)};
+function membersHTML(id){
+  const d=mData[id];let h="";
+  if(mFresh[id])h+=`<div class="note">作ったキー(CSVにも保存しました。この画面を閉じると、もう表示できません)</div><pre id="mf-${id}" style="white-space:pre-wrap;word-break:break-all;font-size:12px">${esc(mFresh[id])}</pre><div class="row"><button data-copy="mf-${id}">コピー</button></div>`;
+  if(!d)return h;
+  if(d.members.length){h+=`<div class="note">参加者(今日使った額)</div>`+d.members.map(m=>`<div class="mrow"><span>${esc(m.label)}</span><span class="note">${m.revoked?"停止済み":money(m.today)}</span>${m.revoked?"":`<button data-mrev="${id}|${m.id}">止める</button>`}</div>`).join("");
+    if(d.members.some(m=>!m.revoked))h+=`<div class="row" style="margin-top:6px"><button data-mrevall="${id}" class="danger">参加者のキーを全部止める</button></div>`}
+  if(d.users.length)h+=`<div class="note" style="margin-top:8px">ボットの利用者(今日使った額)</div>`+d.users.map(u=>`<div class="mrow"><span>${esc(u.user)}</span><span class="note">${money(u.today)}</span></div>`).join("");
+  return h;
+}
+async function loadMembers(id){const r=await api("members_list",{id});if(r&&r.ok){mData[id]=r;const el=$("ml-"+id);if(el)el.innerHTML=membersHTML(id)}}
+document.addEventListener("toggle",e=>{const d=e.target;if(!d||!d.dataset||!d.dataset.members)return;const id=d.dataset.members;if(d.open){openM.add(id);loadMembers(id)}else openM.delete(id)},true);
+document.addEventListener("input",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.mnames)mNames[t.dataset.mnames]=t.value});
+
 function renderRules(){
   if(!D)return;
   $("tab-rules").innerHTML=D.agents.map(a=>`<div class="rule" data-id="${a.id}">
@@ -721,6 +739,16 @@ function renderRules(){
       <label>使ってよい支払先(空欄ならどこでもOK)<input id="r-${a.id}-merchants" data-f="merchants" value="${esc(a.merchants.join(", "))}" placeholder="例: OpenRouter, AWS"></label>
       <div class="full row"><button data-toggle="${a.id}">${a.active?"このAIを止める":"再開する"}</button><button data-rotate="${a.id}">つなぐURLを作り直す</button><button data-del="${a.id}" class="danger">このAIを削除</button><span id="cf-${a.id}" class="note" hidden>もう一度押すと削除します</span></div>
       <div class="full note">判定の順番:緊急停止 → AIの停止 → 支払先 → 1回の上限 → 1日の予算 → 1週間・1か月の予算 → 定期購入(サブスク)は金額に関係なく確認 → (設定していれば)初めての支払先は確認 → 聞かずに払っていい額。予算は日本時間0時(週は月曜、月は1日)にリセット、24時間放置の申請は失効します。</div>
+    </div></details>
+    <details class="more" data-members="${a.id}"${openM.has(a.id)?" open":""}><summary>みんなで使う(勉強会・ボット)</summary><div class="inner">
+      <div class="full note">1つのAIを何人かで分けて使うための設定です。1人ずつに上限がかかり、AI全体の1日の予算もそのまま効きます。</div>
+      <label>1人あたり1日いくらまで(${CL()}・空欄なら上限なし)<input id="m-${a.id}-pud" type="number" inputmode="decimal" min="0" step="any" value="${a.per_user_daily?toD(a.per_user_daily):""}" placeholder="上限なし"></label>
+      <label>終わる日時(空欄なら期限なし)<input id="m-${a.id}-exp" type="datetime-local" value="${a.expires_at?localDT(a.expires_at):""}"></label>
+      <div class="full row"><button data-msave="${a.id}" class="primary">保存</button></div>
+      <label class="full">参加者の名前(1行に1人)<textarea data-mnames="${a.id}" rows="4" placeholder="例:&#10;田中&#10;佐藤">${esc(mNames[a.id]||"")}</textarea></label>
+      <div class="full row"><button data-mmake="${a.id}">参加者のキーを作る</button></div>
+      <div class="full" id="ml-${a.id}">${membersHTML(a.id)}</div>
+      <div class="full note">ボットで使うとき:リクエストに x-saifuban-user ヘッダーで利用者のID(例: discord:1234)を付けると、その人ごとに上限がかかります。</div>
     </div></details>
   </div>`).join("")+`<div><button id="wiz-open" class="primary">+ 別のAIをつなぐ</button></div>`;
 }
@@ -773,6 +801,22 @@ document.addEventListener("click",async e=>{
     return run("update_agent",{id,name:a.name,per_tx:fromD(g("per_tx")),daily:fromD(g("daily")),auto:fromD(g("auto")),weekly:g("weekly").trim()===""?null:fromD(g("weekly")),monthly:g("monthly").trim()===""?null:fromD(g("monthly")),known_only,max_concurrent:Math.max(1,Math.min(50,Math.round(+g("max_concurrent")||4))),merchants:splitM(g("merchants")),active},
       b.dataset.toggle?(active?`${a.name}を再開しました`:`${a.name}を止めました`):`${a.name}のルールを保存しました`);
   }
+  if(b.dataset.msave){const id=b.dataset.msave;if(!UUID.test(id))return;const pv=$("m-"+id+"-pud").value.trim(),ev=$("m-"+id+"-exp").value;
+    return run("set_agent_limits",{id,per_user_daily:pv===""?null:fromD(pv),expires_at:ev?new Date(ev).toISOString():null},"保存しました")}
+  if(b.dataset.mmake){const id=b.dataset.mmake;if(!UUID.test(id))return;
+    const labels=(mNames[id]||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    if(!labels.length){toast("名前を1行に1人ずつ入れてください");return}
+    const r=await run("members_create",{id,labels});if(!r||!r.ok)return;
+    if(!r.created.length){toast("新しく作るキーはありませんでした(同じ名前はもう作ってあります)");return}
+    const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+    const csv="\ufeffname,key,anthropic_base_url,openai_base_url\n"+r.created.map(c=>[c.label,c.key,RELAY+"/anthropic",RELAY+"/openai/v1"].map(q).join(",")).join("\n")+"\n";
+    try{const u=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));const l=document.createElement("a");l.href=u;l.download="saifuban-keys.csv";document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}catch(_){}
+    mFresh[id]=r.created.map(c=>c.label+"\t"+c.key).join("\n");mNames[id]="";renderRules();loadMembers(id);toast("参加者のキーを作りました");return}
+  if(b.dataset.mrev){const[id,mid]=b.dataset.mrev.split("|");if(!UUID.test(id)||!UUID.test(mid))return;
+    await run("members_revoke",{id,member:mid},"止めました");return loadMembers(id)}
+  if(b.dataset.mrevall){const id=b.dataset.mrevall;if(!UUID.test(id))return;
+    if(delArm!=="mall-"+id){delArm="mall-"+id;b.textContent="もう一度押すと全員止まります";return}
+    delArm=null;await run("members_revoke",{id,all:true},"参加者のキーを全部止めました");return loadMembers(id)}
   if(b.dataset.del){const id=b.dataset.del;if(!UUID.test(id))return;
     if(delArm!==id){delArm=id;$("cf-"+id).hidden=false;return}
     delArm=null;return run("delete_agent",{id},"削除しました");}

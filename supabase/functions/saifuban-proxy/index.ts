@@ -422,10 +422,17 @@ Deno.serve(async (req) => {
   }
   // やり直し(SDKの再送)かどうか。前の呼び出しが切れたのに気づけず残っていたら、それを止めてから予約する
   // (同じ呼び出しを二重に予約・二重に流さない)。印は idempotency key、なければ本文そのもの(再送は本文が同じ)
+  // ボットなどで、呼び出しごとの利用者(ユーザーID)を渡すと、その人ごとに1日の上限がかかる
+  const endUser = (req.headers.get("x-saifuban-user") || "").trim().slice(0, 100);
   let retryKey: string | null = null;
   if (isGeneration && raw) {
     const idem = (req.headers.get("idempotency-key") || req.headers.get("x-idempotency-key") || "").trim().slice(0, 200);
     retryKey = idem ? "k:" + idem : "h:" + Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", raw)), (b) => b.toString(16).padStart(2, "0")).join("");
+    // 参加者キーや利用者IDが違えば別の呼び出し(同じ文面を送った別の人を、やり直しと取り違えない)
+    if (key.startsWith("sbk_m_") || endUser) {
+      const tag = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key + "|" + endUser))), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+      retryKey = tag + ":" + retryKey;
+    }
     const isRetry = !!idem || Number(req.headers.get("x-stainless-retry-count") || "0") > 0;
     if (isRetry) {
       const { data: old } = await db.rpc("sb_proxy_supersede", { p_key: key, p_slot: null, p_retry_key: retryKey, p_is_retry: true });
@@ -442,9 +449,10 @@ Deno.serve(async (req) => {
       }
     }
   }
-  const { data: gate, error: gateErr } = await db.rpc("sb_proxy_begin_v5", {
+  const { data: gate, error: gateErr } = await db.rpc("sb_proxy_begin_v6", {
     p_key: key, p_provider: provider, p_model: estModel, p_in_est: estIn, p_out_max: estOut,
     p_extra_usd: isGeneration ? extraEstimateUsd(provider, estModel, parsed) : 0, p_choices: choices, p_min_out: minOut,
+    p_user: endUser || null,
   });
   if (gateErr || !gate) {
     console.error("begin", gateErr);
@@ -538,7 +546,7 @@ Deno.serve(async (req) => {
         ok: true, slot: gate.slot, url: target.toString(), method,
         headers: Object.fromEntries(headers.entries()), body: changedBody, remaining_jpy: gate.remaining_jpy,
         capped: gate.shrunk_from ? `${gate.shrunk_from}->${gate.out_max}` : null,
-        out_headers: limitHeaders(provider, gate),
+        out_headers: { ...limitHeaders(provider, gate), ...(gate.user_remaining_jpy != null ? { "x-saifuban-user-remaining-jpy": String(gate.user_remaining_jpy) } : {}) },
         // 流しているあいだ数秒ごとに「やり直しで置き換えられたか」を見る先(関数の呼び出しを使わず、データベースに直接聞く)
         watch: watchToken ? { url: Deno.env.get("SUPABASE_URL") + "/rest/v1/rpc/sb_slot_superseded", key: Deno.env.get("SUPABASE_ANON_KEY") || "", token: watchToken } : null,
       }), { status: 200, headers: { "Content-Type": "application/json", "x-saifuban-gate": "ok", "Cache-Control": "no-store" } });
@@ -558,6 +566,7 @@ Deno.serve(async (req) => {
     outHeaders.delete("content-encoding");
     outHeaders.delete("content-length");
     outHeaders.set("x-saifuban-remaining-jpy", String(gate.remaining_jpy));
+    if (gate.user_remaining_jpy != null) outHeaders.set("x-saifuban-user-remaining-jpy", String(gate.user_remaining_jpy));
     if (gate.shrunk_from) outHeaders.set("x-saifuban-output-capped", `${gate.shrunk_from}->${gate.out_max}`);
     stripUnified(outHeaders);
     if (upstream.ok) for (const [k, v] of Object.entries(limitHeaders(provider, gate))) outHeaders.set(k, v);

@@ -29,6 +29,17 @@ AIエージェントは支払いの前に財布番に「払っていいか」を
 
 APIキーを他人のサーバーに預けたくない場合は、全部を自分のSupabaseとCloudflare(どちらも無料枠で足ります)で動かせます。手順は [SELF_HOST.md](SELF_HOST.md)。
 
+**ほかの方法との違い**
+
+- **公式の上限(Anthropic Console・OpenAI)**:無料なので設定はしておくのがおすすめです。ただしConsoleの上限は月単位・ワークスペース単位なので、一晩で1か月分を使えてしまい、同じワークスペースのAI全部で1つの枠を分け合います。財布番はAIごと・1日ごとです。
+- **LangSmithのLLM Gateway(ベータ)**:キーごとの1日上限があります。LangSmithを使っているならそれでも十分です。財布番はMITライセンスで自分で動かせること、Claude Codeの中で2行で設定できること、呼び出しの前に最大額を予約するので同時実行ややり直しでも抜けないこと、上限に達したらスマホに「今日だけ+500円」のボタンが届くことが違います。
+- **フレームワーク側の制限(`max_iter` など)**:ループ止めとして残しておくのがおすすめです。ただ、数えるのが呼び出しの後で、1つのプロセスの中だけ、しかもAIが本物のキーを持ったままです。代理のキーなら、コードが何をしても予算以上は使えません。
+
+**勉強会・授業・ボットで、みんなで使う**
+
+- 勉強会・授業・ハッカソンで参加者にAPIを使わせたいとき:AIの設定の「みんなで使う」で名前を1行に1人ずつ貼り、「参加者のキーを作る」を押すと、1人ずつ別のキー(`sbk_m_...`)ができます(CSVで保存)。1人あたりの1日の上限と終わる日時を決めておけば、時間が来たら全員止まります。1人だけ止める、全員止める、誰が今日いくら使ったかを見る、もできます。本物のAPIキーは配りません
+- DiscordなどのボットでAIを使うとき:呼び出しに `x-saifuban-user: discord:1234` のように利用者のIDを付けると、その人ごとに1日の上限がかかります。1人が連打しても、ほかの人は使い続けられます
+
 ### 使い方
 
 Claude Codeを使っているなら、Claude Codeの中で2行打つだけです(登録・AI作成・APIキー預け・設定まで全部やります。APIキーをチャットに貼る必要はありません):
@@ -68,6 +79,13 @@ https://zrphnuvrsldcycxtdftv.supabase.co/functions/v1/saifuban-mcp
 - **Open source and self-hostable.** Don't want to hand your key to someone else's server? Run the whole thing on your own Supabase and Cloudflare free tiers: [SELF_HOST.md](SELF_HOST.md).
 
 <img src="api-en.gif" width="420" alt="Demo: an agent loops overnight and Saifuban stops its API calls at the daily budget">
+
+### How is this different from…
+
+- **Provider spend limits (Anthropic Console, OpenAI projects).** Set them anyway, they're free. But on the Console they're monthly and per workspace, so one bad night can use the whole month and every agent in the workspace shares the pool. Saifuban is per agent and per day.
+- **LangSmith LLM Gateway (beta).** Also does per-key daily caps. If you already live in LangSmith, it's a good fit. Saifuban is MIT and self-hostable, sets itself up inside Claude Code in two lines, reserves the worst case *before* each call (so parallel calls and SDK retries can't slip past), and pings your phone with a "+$3 today" button when an agent hits the cap.
+- **Framework limits (`max_iter`, `recursion_limit`, token-counting callbacks).** Keep them, they stop loops. But they count after the call, live inside one process, and the agent still holds your real key. A proxy key can't spend more than its budget no matter what the code does.
+- **Rolling your own.** Totally doable. The tricky cases are in [the reserve → settle → release test](tests/reserve-settle-release.md) if you want to compare notes.
 
 ### Hard cap on API bills
 
@@ -145,6 +163,20 @@ const openai = createOpenAI({ baseURL: "https://saifuban.saifuban-app.workers.de
 ```
 
 **OpenRouter** (hundreds of models, actual cost reported per call): base URL `https://saifuban.saifuban-app.workers.dev/proxy/openrouter/v1`. **Gemini**: `https://saifuban.saifuban-app.workers.dev/proxy/google/v1beta/openai` (OpenAI-compatible).
+
+### Sharing one key: workshops, classes, bots
+
+**Handing out API access to a group** (a workshop, a class, a hackathon): open an agent's settings → "Shared use", paste one name per line and press "Create participant keys". Everyone gets their own `sbk_m_...` key (downloaded as a CSV). Set a daily cap per person and an end time; when it passes, every key stops. You can stop one person's key or all of them, and see who spent what today. Your real provider key is never handed out.
+
+**Public bots** (Discord, Slack, a web chat): send the end user's ID with each call and each user gets their own daily cap, so one person spamming the bot can't burn the whole budget.
+
+```python
+client = OpenAI(base_url="https://saifuban.saifuban-app.workers.dev/proxy/openai/v1", api_key="sbk_...")
+reply = client.chat.completions.create(model="gpt-4o-mini", messages=msgs,
+                                       extra_headers={"x-saifuban-user": f"discord:{user_id}"})
+```
+
+Over the cap, that user gets a `429` (`x-should-retry: false`); everyone else keeps working. The response carries `x-saifuban-user-remaining-jpy`. Test: [tests/members-and-user-caps.sql](tests/members-and-user-caps.sql).
 
 ### Phone approval for everything else
 

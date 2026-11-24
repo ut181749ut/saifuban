@@ -95,6 +95,20 @@ Deno.serve(async (req) => {
       }
       case "delete_agent":
         return await call("app_archive_agent", { ...K, p_id: uuid(b.id) });
+      // みんなで使う(勉強会・ボット): 1人あたりの1日の上限と期限、参加者のキー
+      case "set_agent_limits": {
+        const exp = typeof b.expires_at === "string" && b.expires_at && !Number.isNaN(Date.parse(b.expires_at)) ? new Date(b.expires_at).toISOString() : null;
+        return await call("app_set_agent_limits", { ...K, p_id: uuid(b.id), p_per_user_daily: int(b.per_user_daily) || null, p_expires_at: exp });
+      }
+      case "members_create":
+        return await call("app_members_create", { ...K, p_agent: uuid(b.id), p_labels: (Array.isArray(b.labels) ? b.labels : []).slice(0, 300).map((x) => str(x, 60)) });
+      case "members_list":
+        return await call("app_members_list", { ...K, p_agent: uuid(b.id) });
+      case "members_revoke": {
+        const mid = typeof b.member === "string" && /^[0-9a-f-]{36}$/i.test(b.member) ? b.member : null;
+        if (!mid && b.all !== true) return json({ error: "member_required" }, 400);
+        return await call("app_members_revoke", { ...K, p_agent: uuid(b.id), p_member: mid });
+      }
       case "rotate_key":
         return await call("app_rotate_key", { ...K, p_id: uuid(b.id) });
       case "decide":
